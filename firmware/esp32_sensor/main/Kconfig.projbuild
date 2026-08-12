@@ -1,0 +1,42 @@
+menu "Piuda sensor configuration"
+
+config PIUDA_WIFI_SSID
+    string "Wi-Fi SSID"
+    default ""
+
+config PIUDA_WIFI_PASSWORD
+    string "Wi-Fi password"
+    default ""
+
+config PIUDA_SERVER_URL
+    string "Piuda server base URL"
+    default "http://192.168.50.242:8080"
+
+config PIUDA_DEVICE_UID
+    string "Registered device UID"
+    default "livingroom-esp32"
+
+config PIUDA_SENSOR_KEY
+    string "Sensor API key issued by caregiver dashboard"
+    default ""
+
+config PIUDA_LOCATION
+    string "Installation location"
+    default "거실"
+
+config PIUDA_PIR_GPIO
+    int "PIR GPIO number"
+    default 27
+    range 0 48
+
+config PIUDA_CSI_MOTION_DELTA
+    int "CSI motion delta threshold (percent)"
+    default 20
+    range 5 100
+
+config PIUDA_CSI_FALL_DELTA
+    int "CSI fall delta threshold (percent)"
+    default 55
+    range 20 200
+
+endmenu

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1d6b54">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="피우다">
+  <meta name="format-detection" content="telephone=no">
+  <title>피우다 · 오늘의 생활</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/icon-180.png">
+  <link rel="stylesheet" href="/static/app.css?v=18">
+</head>
+<body data-page="user">
+  <header class="topbar shell">
+    <a class="brand" href="/" aria-label="피우다 홈"><span class="brand-mark">피</span><span class="brand-copy"><strong>피우다</strong><small>오늘의 생활</small></span></a>
+    <div class="header-actions"><button id="caregiverCallButton" class="button caregiver-call-button" type="button">보호자와 통화</button><span class="demo-badge">시연 모드</span><div class="connection" id="connection"><span></span>연결 확인 중</div></div>
+  </header>
+
+  <main class="shell user-layout">
+    <section class="welcome">
+      <div><p class="eyebrow" id="todayLabel">오늘</p>
+      <h1><span id="userName">사용자</span>님의 <em>오늘 일정</em></h1>
+      <p class="welcome-note">일정을 확인하고 완료 버튼을 눌러 주세요.</p></div>
+      <p class="clock" id="clock" aria-live="polite"></p>
+    </section>
+
+    <section class="status-card status-normal" id="statusCard" aria-live="polite">
+      <div>
+        <p class="eyebrow">오늘의 건강 점수</p>
+        <h2 id="riskLabel">확인 중</h2>
+        <p id="riskMessage">일정과 센서 정보를 확인 중입니다.</p>
+      </div>
+      <div class="score-orb"><strong id="riskScore">-</strong><span>점</span></div>
+    </section>
+
+    <section class="section-block">
+      <div class="section-heading">
+        <div><p class="eyebrow">오늘 일정</p><h2>할 일</h2></div>
+        <div class="progress-stack"><p class="progress-label" id="taskSummary">불러오는 중</p><div class="progress-track"><span id="taskProgress"></span></div></div>
+      </div>
+      <div class="task-list" id="taskList" aria-live="polite"></div>
+    </section>
+
+    <section class="assistant-card">
+      <div class="assistant-icon" aria-hidden="true">피</div>
+      <div class="assistant-copy">
+        <div class="assistant-heading"><div><p class="eyebrow">질문하기</p><h2>생활 도우미</h2></div><button class="text-button tts-toggle" id="ttsToggle" type="button" aria-pressed="true">소리 켜짐</button></div>
+        <div class="conversation" aria-live="polite">
+          <p class="chat-bubble user-bubble hidden" id="assistantQuestion"></p>
+          <div class="chat-bubble assistant-bubble"><span>피우다</span><p id="assistantReply">오늘 할 일이나 상태를 물어보세요.</p><button class="text-button replay-button hidden" id="replayButton" type="button">↻ 다시 듣기</button></div>
+        </div>
+        <div class="quick-prompts" aria-label="빠른 질문"><button type="button" data-quick-prompt="지금 뭘 해야 해?">다음 할 일</button><button type="button" data-quick-prompt="내 상태는 괜찮아?">지금 상태</button></div>
+        <form id="assistantForm" class="assistant-form">
+          <label class="sr-only" for="assistantInput">도우미에게 할 말</label>
+          <input id="assistantInput" autocomplete="off" placeholder="피우다에게 말해 보세요" maxlength="500" autofocus>
+          <p class="input-hint">한/영 전환: Ctrl + Space</p>
+          <button class="button secondary voice-button" id="voiceButton" type="button" aria-label="음성으로 말하기">● 말하기</button>
+          <button class="button primary" type="submit">보내기</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="wellnessDialog" class="wellness-dialog" aria-labelledby="wellnessTitle">
+    <div class="wellness-content">
+      <div class="wellness-icon" aria-hidden="true">?</div>
+      <p class="eyebrow">상태 확인</p>
+      <h2 id="wellnessTitle">지금 문제가 있나요?</h2>
+      <p>잠깐 쉬고 계신 것이면 괜찮아요.<br>현재 상태를 알려 주세요.</p>
+      <p class="wellness-countdown" id="wellnessCountdown">30초 동안 응답을 기다릴게요.</p>
+      <div class="wellness-actions">
+        <button class="button wellness-ok" type="button" data-wellness-response="ok">괜찮아요</button>
+        <button class="button alert-demo" type="button" data-wellness-response="help">도움이 필요해요</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="userCallDialog" class="call-dialog" aria-labelledby="userCallTitle">
+    <div class="call-content">
+      <div class="call-avatar" aria-hidden="true">보</div>
+      <p class="eyebrow">보호자 연결</p>
+      <h2 id="userCallTitle">보호자를 부르고 있어요</h2>
+      <p id="userCallStatus">스마트폰에서 통화를 받을 때까지 잠시 기다려 주세요.</p>
+      <div class="call-pulse" aria-hidden="true"><span></span><span></span><span></span></div>
+      <audio id="userRemoteAudio" autoplay playsinline></audio>
+      <button id="userCallEnd" class="button call-end" type="button">통화 종료</button>
+    </div>
+  </dialog>
+
+  <footer class="shell footer"><div class="footer-links"><a href="/caregiver">보호자 화면</a><a href="/install">아이폰 설치</a></div></footer>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/static/app.js?v=18" defer></script>
+</body>
+</html>

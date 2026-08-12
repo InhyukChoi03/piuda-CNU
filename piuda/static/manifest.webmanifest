@@ -1,0 +1,43 @@
+{
+  "id": "/",
+  "name": "피우다 자립생활지원",
+  "short_name": "피우다",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#f4f1e8",
+  "theme_color": "#1d6b54",
+  "lang": "ko-KR",
+  "description": "오늘 일정과 생활 신호를 확인하는 사용자 앱",
+  "categories": ["health", "lifestyle", "utilities"],
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "오늘 할 일",
+      "short_name": "오늘",
+      "url": "/",
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "보호자 화면",
+      "short_name": "보호자",
+      "url": "/caregiver",
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1d6b54">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="피우다">
+  <meta name="format-detection" content="telephone=no">
+  <title>피우다 · 설치</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/icon-180.png">
+  <link rel="stylesheet" href="/static/app.css?v=18">
+</head>
+<body data-page="install">
+  <header class="topbar shell">
+    <a class="brand" href="/" aria-label="피우다 홈"><span class="brand-mark">피</span><span>피우다</span><small>설치</small></a>
+    <div class="connection" id="connection"><span></span>연결 확인 중</div>
+  </header>
+
+  <main class="shell">
+    <section class="install-hero">
+      <p class="eyebrow">홈 화면 설치</p>
+      <h1>아이폰 홈 화면에<br>피우다를 설치하세요.</h1>
+      <p>같은 Wi-Fi에서 Safari로 열고 홈 화면에 추가하세요.</p>
+      <p class="install-status" id="installStatus" aria-live="polite">설치 환경을 확인하고 있습니다.</p>
+      <button class="button primary hidden" type="button" data-install-prompt>이 기기에 설치</button>
+    </section>
+
+    <section class="install-grid" aria-label="설치 주소">
+      <article class="install-card">
+        <p class="eyebrow">생활 사용자</p>
+        <h2>오늘의 생활</h2>
+        <p>일정을 확인하고 완료하며 생활 도우미를 사용합니다.</p>
+        <div class="qr-frame"><img src="/static/qr/user.png" alt="사용자 화면 QR 코드" width="512" height="512"></div>
+        <div class="install-url" id="userInstallUrl">http://CNU.local:8080/</div>
+        <button class="button secondary" type="button" data-share="user">주소 공유 또는 복사</button>
+      </article>
+
+      <article class="install-card">
+        <p class="eyebrow">가족·보호자</p>
+        <h2>보호자 화면</h2>
+        <p>PIN으로 로그인해 건강 점수·일정·센서를 확인하고 사용자와 통화합니다.</p>
+        <div class="qr-frame"><img src="/static/qr/caregiver.png" alt="보호자 화면 QR 코드" width="512" height="512"></div>
+        <div class="install-url" id="caregiverInstallUrl">https://CNU.local:8443/caregiver</div>
+        <button class="button secondary" type="button" data-share="caregiver">주소 공유 또는 복사</button>
+      </article>
+    </section>
+
+    <section class="install-steps call-setup">
+      <p class="eyebrow">최초 1회만</p>
+      <h2>보호자 음성 통화 준비</h2>
+      <div class="step-list">
+        <div class="step"><strong>1. 인증서 받기</strong><a class="text-button" href="/piuda-ca.crt" download>피우다 통화 인증서</a>를 받습니다.</div>
+        <div class="step"><strong>2. 프로파일 설치</strong>설정 → 일반 → VPN 및 기기 관리에서 설치합니다.</div>
+        <div class="step"><strong>3. 인증서 신뢰</strong>설정 → 일반 → 정보 → 인증서 신뢰 설정에서 Piuda를 켭니다.</div>
+        <div class="step"><strong>4. 보안 주소 열기</strong><a id="secureCallLink" class="text-button" href="https://CNU.local:8443/caregiver">보호자 통화 화면</a>에서 마이크를 허용합니다.</div>
+      </div>
+    </section>
+
+    <section class="install-steps">
+      <h2>아이폰 설치 방법</h2>
+      <div class="step-list">
+        <div class="step"><strong>같은 Wi-Fi 연결</strong>아이폰과 Raspberry Pi를 동일한 공유기에 연결합니다.</div>
+        <div class="step"><strong>Safari로 열기</strong>QR을 스캔한 뒤 Safari에서 페이지를 엽니다.</div>
+        <div class="step"><strong>⋯ 또는 공유 선택</strong>최신 Safari는 아래쪽 ‘⋯’에서 공유를 누릅니다. 이전 버전은 사각형·위쪽 화살표 버튼을 누릅니다.</div>
+        <div class="step"><strong>홈 화면에 추가</strong>‘홈 화면에 추가’와 ‘웹 앱으로 열기’를 선택하고 추가합니다.</div>
+      </div>
+      <p class="install-note"><strong>CNU.local</strong>이 열리지 않으면 Pi가 현재 받은 IP 주소의 <strong>http://IP주소:8080/install</strong>을 여세요. 이 페이지가 보호자 통화 주소도 같은 IP로 자동 맞춥니다.</p>
+    </section>
+  </main>
+
+  <footer class="shell footer"><div class="footer-links"><a href="/">사용자 화면</a><a href="/caregiver">보호자 화면</a></div></footer>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/static/app.js?v=18" defer></script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#102f28">
+  <meta name="format-detection" content="telephone=no">
+  <title>피우다 · 발표 제어실</title>
+  <link rel="stylesheet" href="/static/app.css?v=18">
+</head>
+<body data-page="demo">
+  <header class="topbar shell">
+    <a class="brand" href="/demo"><span class="brand-mark">피</span><span>피우다</span><small>발표 제어실</small></a>
+    <div class="header-actions"><a class="text-button" href="/" target="_blank">사용자 화면</a><a class="text-button" href="/caregiver" target="_blank">보호자 화면</a><div class="connection" id="connection"><span></span>연결 확인 중</div></div>
+  </header>
+
+  <main class="shell demo-console">
+    <section class="demo-hero">
+      <p class="eyebrow">발표 진행</p>
+      <h1>발표 시나리오 제어실</h1>
+      <p>장면을 선택하면 사용자·보호자 화면이 2초 안에 갱신됩니다.</p>
+    </section>
+
+    <section class="demo-roles" aria-label="발표 역할">
+      <article><span>1</span><div><strong>트리거 담당</strong><small>이 화면에서 시나리오 선택</small></div></article>
+      <article><span>2</span><div><strong>사용자 담당</strong><small>사용자 화면 조작</small></div></article>
+      <article><span>3</span><div><strong>보호자 담당</strong><small>보호자 화면 조작</small></div></article>
+    </section>
+
+    <section class="demo-live" id="demoLive" aria-live="polite">
+      <div class="demo-live-copy"><p class="eyebrow">현재 장면</p><h2 id="demoActiveTitle">불러오는 중</h2><p id="demoActiveDescription">현재 장면을 확인 중입니다.</p></div>
+      <div class="demo-live-metrics">
+        <div><strong id="demoRiskMetric">-</strong><small>건강 점수</small></div>
+        <div><strong id="demoTaskMetric">-</strong><small>일정 완료</small></div>
+        <div><strong id="demoAlertMetric">-</strong><small>미확인 알림</small></div>
+      </div>
+      <time id="demoActivatedAt">-</time>
+    </section>
+
+    {% for group in groups %}
+    <section class="demo-group">
+      <div class="demo-group-title"><p class="eyebrow">시나리오 묶음 {{ loop.index }}</p><h2>{{ group.title }}</h2></div>
+      <div class="demo-scenario-grid">
+        {% for scenario in group["items"] %}
+        <article class="demo-scenario-card" data-scenario-card="{{ scenario.key }}">
+          <div class="demo-scenario-heading"><span>{{ scenario.icon }}</span><div><h3>{{ scenario.title }}</h3><p>{{ scenario.summary }}</p></div></div>
+          <p class="demo-expected"><strong>예상 화면</strong>{{ scenario.expected }}</p>
+          <button class="button {% if scenario.key in ['inactivity_no_response', 'emergency', 'fall', 'caregiver_call'] %}alert-demo{% else %}secondary{% endif %}" type="button" data-trigger-scenario="{{ scenario.key }}">이 장면 실행</button>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/static/app.js?v=18" defer></script>
+</body>
+</html>

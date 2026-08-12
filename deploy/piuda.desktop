@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=피우다 실행
+Comment=데이터와 AI를 초기화한 뒤 시연 화면을 전체 화면으로 엽니다
+Exec=/home/cnu/piuda/deploy/piuda-kiosk.sh
+Icon=/home/cnu/piuda/piuda/static/icons/icon-512.png
+Terminal=false
+Categories=Utility;Accessibility;
+StartupNotify=true

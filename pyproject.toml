@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "piuda-care"
+version = "2.0.0"
+description = "Raspberry Pi 5 based independent-living support system"
+requires-python = ">=3.11"
+dependencies = [
+  "Flask>=3.1,<4",
+  "waitress>=3.0,<4",
+  "gTTS>=2.5,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<9",
+  "pytest-cov>=6,<7",
+]
+
+[project.scripts]
+piuda = "piuda.cli:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["piuda*"]
+
+[tool.setuptools.package-data]
+piuda = [
+  "schema.sql",
+  "templates/*.html",
+  "static/*",
+  "static/icons/*.png",
+  "static/qr/*.png",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

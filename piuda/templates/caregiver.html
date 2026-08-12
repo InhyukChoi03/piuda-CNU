@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#173f35">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="피우다 보호자">
+  <meta name="format-detection" content="telephone=no">
+  <title>피우다 · 보호자</title>
+  <link rel="manifest" href="/caregiver-manifest.webmanifest">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/icon-180.png">
+  <link rel="stylesheet" href="/static/app.css?v=18">
+</head>
+<body data-page="caregiver">
+  <header class="topbar shell">
+    <a class="brand" href="/"><span class="brand-mark">피</span><span>피우다</span><small>보호자</small></a>
+    <div class="header-actions"><a class="text-button" href="/install">앱 설치</a><div class="connection" id="connection"><span></span>연결 확인 중</div><button id="logoutButton" class="text-button hidden">로그아웃</button></div>
+  </header>
+
+  <main class="shell">
+    <section class="auth-panel" id="authPanel">
+      <div class="auth-copy"><p class="eyebrow">로그인</p><h1 id="authTitle">보호자 확인</h1><p id="authDescription">보호자 PIN을 입력해 주세요.</p></div>
+      <form id="authForm" class="auth-form">
+        <label for="caregiverName" id="nameLabel" class="hidden">보호자 이름</label>
+        <input id="caregiverName" class="hidden" placeholder="보호자 이름" maxlength="40">
+        <label for="pinInput">보호자 PIN</label>
+        <input id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" minlength="4" maxlength="12" autocomplete="current-password" placeholder="숫자 4~12자리" required>
+        <button class="button primary" type="submit">계속</button>
+        <p class="form-error" id="authError" role="alert"></p>
+      </form>
+    </section>
+
+    <div id="dashboard" class="dashboard hidden">
+      <section class="dashboard-head">
+        <div><p class="eyebrow" id="careDate">오늘의 돌봄 현황</p><h1><span id="careUserName">사용자</span>님의 하루</h1><p>마지막 갱신 <span id="lastRefresh">-</span></p></div>
+        <div class="dashboard-actions"><button id="refreshButton" class="button secondary">새로고침</button></div>
+      </section>
+
+      <section id="callSecurityNotice" class="call-security-notice hidden">
+        <div><strong>음성 통화 준비가 필요해요</strong><span>최초 한 번만 보안 주소에서 마이크를 허용해 주세요.</span></div>
+        <a id="secureCallLink" class="button secondary" href="https://CNU.local:8443/caregiver">통화 화면 열기</a>
+      </section>
+
+      <section class="metric-grid">
+        <article class="metric-card risk-metric">
+          <div class="risk-ring" id="riskRing"><strong id="careRiskScore">0</strong><span>/ 100</span></div>
+          <div><p class="eyebrow">오늘의 건강 점수</p><h2 id="careRiskLabel">안심</h2><p id="careRiskText">특이사항이 없습니다.</p></div>
+        </article>
+        <article class="metric-card"><p class="eyebrow">오늘 일정</p><strong class="metric-number" id="completionMetric">0 / 0</strong><p id="completionText">일정을 불러오는 중</p></article>
+        <article class="metric-card"><p class="eyebrow">미확인 알림</p><strong class="metric-number" id="alertMetric">0</strong><p>확인 후 처리 버튼을 눌러 주세요.</p></article>
+      </section>
+
+      <section class="dashboard-grid">
+        <article class="panel wide"><div class="panel-title"><div><p class="eyebrow">오늘</p><h2>일정 진행</h2></div><button class="text-button" data-dialog="routineDialog">일정 추가</button></div><div id="careTaskList" class="compact-list"></div></article>
+        <article class="panel"><div class="panel-title"><div><p class="eyebrow">판단 근거</p><h2>살펴본 신호</h2></div></div><div id="riskFactors" class="factor-list"></div></article>
+        <article class="panel"><div class="panel-title"><div><p class="eyebrow">최근</p><h2>보호자 알림</h2></div></div><div id="alertList" class="compact-list"></div></article>
+        <article class="panel"><div class="panel-title"><div><p class="eyebrow">비접촉 감지</p><h2>센서 상태</h2></div><button class="text-button" data-dialog="sensorDialog">센서 등록</button></div><div id="sensorList" class="compact-list"></div></article>
+        <article class="panel"><div class="panel-title"><div><p class="eyebrow">감지 기록</p><h2>최근 움직임</h2></div></div><div id="eventList" class="timeline"></div></article>
+      </section>
+    </div>
+  </main>
+
+  <dialog id="routineDialog">
+    <form id="routineForm" class="dialog-form"><div class="panel-title"><h2>새 반복 일정</h2><button type="button" class="icon-button" data-close>닫기</button></div>
+      <label>일정 이름<input name="title" required maxlength="80" placeholder="예: 아침 약 복용"></label>
+      <label>분류<select name="category"><option value="medication">복약</option><option value="meal">식사</option><option value="cleaning">청소</option><option value="sleep">수면</option><option value="outing">외출</option><option value="hospital">병원</option><option value="other">기타</option></select></label>
+      <label>시간<input name="scheduled_time" type="time" required></label>
+      <label>안내 문구<textarea name="instructions" rows="3" placeholder="사용자에게 보여줄 짧은 안내"></textarea></label>
+      <p class="help">현재는 매일 반복으로 등록됩니다. 요일 편집은 API에서 지원합니다.</p>
+      <button class="button primary" type="submit">일정 저장</button>
+    </form>
+  </dialog>
+
+  <dialog id="sensorDialog">
+    <form id="sensorForm" class="dialog-form"><div class="panel-title"><h2>ESP32 센서 등록</h2><button type="button" class="icon-button" data-close>닫기</button></div>
+      <label>기기 ID<input name="device_uid" required placeholder="예: livingroom-esp32"></label>
+      <label>표시 이름<input name="name" required placeholder="거실 센서"></label>
+      <label>설치 위치<input name="location" required placeholder="거실 천장"></label>
+      <button class="button primary" type="submit">센서 키 만들기</button>
+      <pre id="sensorKeyResult" class="key-result hidden"></pre>
+    </form>
+  </dialog>
+
+  <dialog id="localAlertDialog" class="local-alert-dialog" aria-labelledby="localAlertTitle">
+    <div class="local-alert-content">
+      <div class="local-alert-icon" aria-hidden="true">!</div>
+      <h2 id="localAlertTitle">확인이 필요합니다</h2>
+      <p id="localAlertMessage">새로운 보호자 알림이 도착했습니다.</p>
+      <time id="localAlertTime">-</time>
+      <button id="localAlertAcknowledge" class="button primary" type="button">확인했습니다</button>
+    </div>
+  </dialog>
+
+  <dialog id="caregiverCallDialog" class="call-dialog" aria-labelledby="caregiverCallTitle">
+    <div class="call-content">
+      <div class="call-avatar" aria-hidden="true">피</div>
+      <p class="eyebrow">음성 통화</p>
+      <h2 id="caregiverCallTitle">김피움님이 부르고 있어요</h2>
+      <p id="caregiverCallStatus">통화 받기를 눌러 연결하세요.</p>
+      <div class="call-pulse" aria-hidden="true"><span></span><span></span><span></span></div>
+      <audio id="caregiverRemoteAudio" autoplay playsinline></audio>
+      <div class="call-actions" id="incomingCallActions">
+        <button id="caregiverCallDecline" class="button call-end" type="button">거절</button>
+        <button id="caregiverCallAnswer" class="button call-answer" type="button">통화 받기</button>
+      </div>
+      <button id="caregiverCallEnd" class="button call-end hidden" type="button">통화 종료</button>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/static/app.js?v=18" defer></script>
+</body>
+</html>
