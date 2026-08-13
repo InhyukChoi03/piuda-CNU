@@ -1,0 +1,23 @@
+menu "Piuda CSI transmitter configuration"
+
+config PIUDA_TX_WIFI_SSID
+    string "Wi-Fi SSID"
+    default ""
+
+config PIUDA_TX_WIFI_PASSWORD
+    string "Wi-Fi password"
+    default ""
+
+config PIUDA_TX_STATION_MAC
+    string "CSI transmitter station MAC"
+    default "1a:50:49:55:44:41"
+    help
+        Locally administered unicast MAC used to identify this transmitter's
+        ESP-NOW frames in the Piuda receiver. Must match the receiver setting.
+
+config PIUDA_TX_PACKETS_PER_SECOND
+    int "CSI packets per second"
+    default 50
+    range 10 200
+
+endmenu

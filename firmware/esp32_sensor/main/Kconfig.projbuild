@@ -29,14 +29,36 @@ config PIUDA_PIR_GPIO
     default 27
     range 0 48
 
+config PIUDA_CSI_SENDER_MAC
+    string "CSI transmitter station MAC"
+    default "1a:50:49:55:44:41"
+    help
+        Must match the locally administered station MAC configured in the
+        piuda_csi_transmitter project.
+
+config PIUDA_CSI_CALIBRATION_PACKETS
+    int "CSI baseline calibration packets"
+    default 250
+    range 50 5000
+
 config PIUDA_CSI_MOTION_DELTA
     int "CSI motion delta threshold (percent)"
     default 20
     range 5 100
 
+config PIUDA_CSI_MOTION_CONSECUTIVE
+    int "Consecutive CSI packets required for motion"
+    default 5
+    range 1 100
+
 config PIUDA_CSI_FALL_DELTA
     int "CSI fall delta threshold (percent)"
     default 55
     range 20 200
+
+config PIUDA_CSI_FALL_CONSECUTIVE
+    int "Consecutive CSI packets required for a fall candidate"
+    default 3
+    range 1 100
 
 endmenu

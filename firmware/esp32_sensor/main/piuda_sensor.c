@@ -11,6 +11,7 @@
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_netif.h"
+#include "esp_now.h"
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
@@ -24,7 +25,8 @@
 #define EVENT_QUEUE_LENGTH 16
 #define EVENT_TYPE_LENGTH 16
 #define EVENT_ID_LENGTH 33
-#define CSI_MIN_PACKETS 20
+#define CSI_SAMPLE_QUEUE_LENGTH 64
+#define CSI_LOG_INTERVAL_US 1000000
 #define HTTP_MAX_ATTEMPTS 5
 #define HTTP_RETRY_INITIAL_MS 500
 #define HTTP_RETRY_MAX_MS 8000
@@ -32,8 +34,9 @@
 static const char *TAG = "piuda-sensor";
 static EventGroupHandle_t wifi_events;
 static QueueHandle_t sensor_events;
-static float csi_baseline;
-static uint32_t csi_samples;
+static QueueHandle_t csi_sample_queue;
+static uint8_t csi_sender_mac[6];
+static volatile uint32_t csi_dropped_samples;
 static int64_t last_motion_us;
 static int64_t last_fall_us;
 
@@ -55,6 +58,36 @@ typedef struct {
     esp_err_t transport_error;
     int http_status;
 } event_post_result_t;
+
+typedef struct {
+    float magnitude;
+    int8_t rssi;
+    int64_t received_us;
+} csi_sample_t;
+
+static bool parse_mac(const char *text, uint8_t output[6])
+{
+    unsigned int values[6];
+    int consumed = 0;
+    if (sscanf(
+            text,
+            "%2x:%2x:%2x:%2x:%2x:%2x%n",
+            &values[0],
+            &values[1],
+            &values[2],
+            &values[3],
+            &values[4],
+            &values[5],
+            &consumed
+        ) != 6 || text[consumed] != '\0') {
+        return false;
+    }
+    for (int index = 0; index < 6; index++) {
+        if (values[index] > UINT8_MAX) return false;
+        output[index] = (uint8_t)values[index];
+    }
+    return true;
+}
 
 static void enqueue_event(const char *type, float value, float confidence)
 {
@@ -109,6 +142,7 @@ static void initialise_wifi(void)
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
 }
 
 static void csi_receive_callback(void *ctx, wifi_csi_info_t *info)
@@ -116,37 +150,129 @@ static void csi_receive_callback(void *ctx, wifi_csi_info_t *info)
     if (info == NULL || info->buf == NULL || info->len < 16) {
         return;
     }
+    if (memcmp(info->mac, csi_sender_mac, sizeof(csi_sender_mac)) != 0) {
+        return;
+    }
 
-    float magnitude_sum = 0.0f;
+    float power_sum = 0.0f;
     int pairs = 0;
     for (int i = 0; i + 1 < info->len; i += 2) {
         int8_t imaginary = info->buf[i];
         int8_t real = info->buf[i + 1];
-        magnitude_sum += sqrtf((float)(real * real + imaginary * imaginary));
+        power_sum += (float)(real * real + imaginary * imaginary);
         pairs++;
     }
     if (pairs == 0) return;
 
-    float magnitude = magnitude_sum / pairs;
-    if (csi_samples < CSI_MIN_PACKETS) {
-        csi_baseline = csi_samples == 0 ? magnitude : csi_baseline * 0.9f + magnitude * 0.1f;
-        csi_samples++;
-        return;
+    csi_sample_t sample = {
+        .magnitude = sqrtf(power_sum / pairs),
+        .rssi = info->rx_ctrl.rssi,
+        .received_us = esp_timer_get_time(),
+    };
+    if (xQueueSend(csi_sample_queue, &sample, 0) != pdTRUE) {
+        csi_dropped_samples++;
     }
+}
 
-    float delta_percent = fabsf(magnitude - csi_baseline) / fmaxf(csi_baseline, 1.0f) * 100.0f;
-    csi_baseline = csi_baseline * 0.985f + magnitude * 0.015f;
-    int64_t current_us = esp_timer_get_time();
+static void csi_analysis_task(void *arg)
+{
+    csi_sample_t sample;
+    float baseline = 0.0f;
+    float delta_ema = 0.0f;
+    uint32_t calibration_count = 0;
+    uint32_t received_count = 0;
+    int motion_streak = 0;
+    int fall_streak = 0;
+    int64_t last_log_us = 0;
 
-    if (delta_percent >= CONFIG_PIUDA_CSI_FALL_DELTA && current_us - last_fall_us > 15000000) {
-        float confidence = fminf(1.0f, delta_percent / (CONFIG_PIUDA_CSI_FALL_DELTA * 1.5f));
-        enqueue_event("csi_fall", delta_percent, confidence);
-        last_fall_us = current_us;
-    } else if (delta_percent >= CONFIG_PIUDA_CSI_MOTION_DELTA && current_us - last_motion_us > 3000000) {
-        float confidence = fminf(1.0f, delta_percent / (CONFIG_PIUDA_CSI_MOTION_DELTA * 2.0f));
-        enqueue_event("csi_motion", delta_percent, confidence);
-        last_motion_us = current_us;
+    ESP_LOGI(
+        TAG,
+        "CSI calibration: keep the sensing area still for %d packets",
+        CONFIG_PIUDA_CSI_CALIBRATION_PACKETS
+    );
+    while (true) {
+        if (xQueueReceive(csi_sample_queue, &sample, pdMS_TO_TICKS(2000)) != pdTRUE) {
+            ESP_LOGW(TAG, "CSI sender packets not received; check sender, channel, and sender MAC");
+            continue;
+        }
+        received_count++;
+
+        if (calibration_count < CONFIG_PIUDA_CSI_CALIBRATION_PACKETS) {
+            baseline = calibration_count == 0
+                ? sample.magnitude
+                : baseline * 0.98f + sample.magnitude * 0.02f;
+            calibration_count++;
+            if (calibration_count == CONFIG_PIUDA_CSI_CALIBRATION_PACKETS) {
+                ESP_LOGI(TAG, "CSI baseline ready: magnitude=%.2f rssi=%d", baseline, sample.rssi);
+                last_log_us = sample.received_us;
+            }
+            continue;
+        }
+
+        float delta_percent = fabsf(sample.magnitude - baseline) / fmaxf(baseline, 1.0f) * 100.0f;
+        delta_ema = delta_ema == 0.0f ? delta_percent : delta_ema * 0.75f + delta_percent * 0.25f;
+
+        // Do not teach active movement into the baseline. Only slow drift while the
+        // link is quiet is absorbed.
+        if (delta_ema < CONFIG_PIUDA_CSI_MOTION_DELTA) {
+            baseline = baseline * 0.997f + sample.magnitude * 0.003f;
+        }
+
+        fall_streak = delta_ema >= CONFIG_PIUDA_CSI_FALL_DELTA ? fall_streak + 1 : 0;
+        motion_streak = delta_ema >= CONFIG_PIUDA_CSI_MOTION_DELTA ? motion_streak + 1 : 0;
+
+        if (fall_streak >= CONFIG_PIUDA_CSI_FALL_CONSECUTIVE &&
+            sample.received_us - last_fall_us > 15000000) {
+            float confidence = fminf(
+                1.0f,
+                delta_ema / (CONFIG_PIUDA_CSI_FALL_DELTA * 1.5f)
+            );
+            enqueue_event("csi_fall", delta_ema, confidence);
+            ESP_LOGW(TAG, "CSI fall candidate: delta=%.1f%% confidence=%.2f", delta_ema, confidence);
+            last_fall_us = sample.received_us;
+            fall_streak = 0;
+            motion_streak = 0;
+        } else if (motion_streak >= CONFIG_PIUDA_CSI_MOTION_CONSECUTIVE &&
+                   sample.received_us - last_motion_us > 3000000) {
+            float confidence = fminf(
+                1.0f,
+                delta_ema / (CONFIG_PIUDA_CSI_MOTION_DELTA * 2.0f)
+            );
+            enqueue_event("csi_motion", delta_ema, confidence);
+            ESP_LOGI(TAG, "CSI motion: delta=%.1f%% confidence=%.2f", delta_ema, confidence);
+            last_motion_us = sample.received_us;
+            motion_streak = 0;
+        }
+
+        if (sample.received_us - last_log_us >= CSI_LOG_INTERVAL_US) {
+            UBaseType_t queued = uxQueueMessagesWaiting(csi_sample_queue);
+            ESP_LOGI(
+                TAG,
+                "CSI live: frames=%lu rssi=%d magnitude=%.2f baseline=%.2f delta=%.1f%% queued=%u drops=%lu",
+                (unsigned long)received_count,
+                sample.rssi,
+                sample.magnitude,
+                baseline,
+                delta_ema,
+                (unsigned int)queued,
+                (unsigned long)csi_dropped_samples
+            );
+            last_log_us = sample.received_us;
+        }
     }
+}
+
+static void initialise_esp_now_receiver(void)
+{
+    const uint8_t broadcast_mac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+    esp_now_peer_info_t peer = {
+        .channel = 0,
+        .ifidx = WIFI_IF_STA,
+        .encrypt = false,
+    };
+    memcpy(peer.peer_addr, broadcast_mac, sizeof(broadcast_mac));
+    ESP_ERROR_CHECK(esp_now_init());
+    ESP_ERROR_CHECK(esp_now_add_peer(&peer));
 }
 
 static void initialise_csi(void)
@@ -160,6 +286,7 @@ static void initialise_csi(void)
         .manu_scale = false,
         .shift = 0,
     };
+    ESP_ERROR_CHECK(esp_wifi_set_promiscuous(true));
     ESP_ERROR_CHECK(esp_wifi_set_csi_config(&config));
     ESP_ERROR_CHECK(esp_wifi_set_csi_rx_cb(csi_receive_callback, NULL));
     ESP_ERROR_CHECK(esp_wifi_set_csi(true));
@@ -364,14 +491,32 @@ void app_main(void)
     esp_err_t nvs_result = nvs_flash_init();
     if (nvs_result == ESP_ERR_NVS_NO_FREE_PAGES || nvs_result == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
-        ESP_ERROR_CHECK(nvs_flash_init());
+        nvs_result = nvs_flash_init();
     }
+    ESP_ERROR_CHECK(nvs_result);
 
+    if (!parse_mac(CONFIG_PIUDA_CSI_SENDER_MAC, csi_sender_mac)) {
+        ESP_LOGE(TAG, "invalid CSI sender MAC: %s", CONFIG_PIUDA_CSI_SENDER_MAC);
+        return;
+    }
     sensor_events = xQueueCreate(EVENT_QUEUE_LENGTH, sizeof(piuda_event_t));
+    csi_sample_queue = xQueueCreate(CSI_SAMPLE_QUEUE_LENGTH, sizeof(csi_sample_t));
+    if (sensor_events == NULL || csi_sample_queue == NULL) {
+        ESP_LOGE(TAG, "failed to allocate sensor queues");
+        return;
+    }
     initialise_wifi();
     xEventGroupWaitBits(wifi_events, WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
+    initialise_esp_now_receiver();
     initialise_csi();
     xTaskCreate(pir_task, "pir", 3072, NULL, 5, NULL);
+    xTaskCreate(csi_analysis_task, "csi-analysis", 4096, NULL, 5, NULL);
     xTaskCreate(sender_task, "sender", 6144, NULL, 4, NULL);
-    ESP_LOGI(TAG, "Piuda sensor ready: %s (%s)", CONFIG_PIUDA_DEVICE_UID, CONFIG_PIUDA_LOCATION);
+    ESP_LOGI(
+        TAG,
+        "Piuda sensor ready: %s (%s), CSI sender " MACSTR,
+        CONFIG_PIUDA_DEVICE_UID,
+        CONFIG_PIUDA_LOCATION,
+        MAC2STR(csi_sender_mac)
+    );
 }

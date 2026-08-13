@@ -1,15 +1,26 @@
 # ESP32 PIR + Wi-Fi CSI 센서
 
-ESP-IDF 5.2 이상을 기준으로 한 피우다 센서 펌웨어입니다. PIR의 직접 움직임과 Wi-Fi CSI 진폭 변화를 함께 보내며, 서버는 두 신호를 위험도 계산에 사용합니다.
+ESP-IDF 5.2 이상을 기준으로 한 **수신기** 펌웨어입니다. 한 보드가 PIR 입력을 읽으면서 두 번째 ESP32가 보내는 ESP-NOW 패킷의 Wi-Fi CSI를 측정하고, 판정 이벤트를 Piuda 서버로 전송합니다. 송신기 코드는 `../esp32_csi_transmitter`에 있습니다.
 
 ## 설정 및 업로드
 
 1. 보호자 화면의 `센서 등록`에서 기기 ID와 설치 위치를 등록하고 API 키를 한 번 복사합니다.
 2. ESP-IDF 셸에서 이 디렉터리로 이동합니다.
 3. `idf.py menuconfig`의 `Piuda sensor configuration`에서 Wi-Fi, Pi 서버 주소, 기기 ID, 센서 키, PIR GPIO를 설정합니다.
-4. `idf.py build flash monitor`를 실행합니다.
+4. `CSI transmitter station MAC`이 송신기 설정값과 같은지 확인합니다. 기본값은 양쪽 모두 `1a:50:49:55:44:41`입니다.
+5. `idf.py build flash monitor`를 실행합니다.
 
-키와 Wi-Fi 비밀번호는 `sdkconfig`에만 저장되며 Git에서 제외해야 합니다. CSI 낙상 판정은 의료기기 판정이 아니라 보호자 확인을 유도하는 보조 신호입니다. 실제 공간에서 30분 이상 기준선을 수집해 `CSI motion/fall delta threshold`를 조정하세요.
+키와 Wi-Fi 비밀번호는 `sdkconfig`에만 저장되며 Git에서 제외해야 합니다. 부팅 후 송신기 패킷 250개로 초기 기준선을 만드므로 그동안 두 보드 사이를 비워 두세요. 이후 `CSI live` 로그에서 magnitude, baseline, delta를 확인할 수 있습니다.
+
+CSI 낙상 판정은 학습 모델이나 의료기기 판정이 아니라 보호자 확인을 유도하는 임계값 기반 보조 신호입니다. 실제 발표 공간에서 최소 30분 동안 정지·걷기·빠른 움직임 데이터를 확인한 뒤 `CSI motion/fall delta threshold`와 연속 패킷 수를 조정하세요.
+
+## 하드웨어 배치
+
+- 송신기와 수신기를 1~3m 간격으로 고정합니다.
+- 두 보드 모두 같은 2.4GHz Wi-Fi에 연결합니다. ESP-NOW는 공유기가 선택한 동일 채널을 사용합니다.
+- 사람은 두 보드 사이를 지나가도록 배치합니다.
+- 수신기 PIR의 OUT은 기본 GPIO 27에 연결합니다.
+- 측정 중 보드·공유기·전원 케이블을 움직이지 않습니다.
 
 ## 전송 신뢰성
 

@@ -51,11 +51,11 @@
 
 **조작**
 
-- [A는 사용자 화면, ESP32 센서, 보호자 스마트폰을 차례로 가리킨다.]
+- [A는 사용자 화면, CSI 송신·수신 ESP32 두 대, 보호자 스마트폰을 차례로 가리킨다.]
 
 **발표 멘트**
 
-> 전체 흐름은 단순합니다. ESP32가 움직임과 CSI 변화를 센서별 API 키와 함께 Raspberry Pi의 Flask REST API로 전송합니다. Pi는 반복 일정을 오늘의 체크리스트로 만들고, 일정과 센서 이벤트를 함께 점수화합니다. 결과와 알림은 SQLite에 저장되고 사용자 화면과 PIN 보호 보호자 화면이 2초 주기로 동기화됩니다. SQLite에는 외래 키와 WAL 모드를 적용해 여러 화면의 동시 조회와 기록을 처리했습니다.
+> 전체 흐름은 단순합니다. 한 ESP32가 초당 50개의 측정 패킷을 만들고, 다른 ESP32가 PIR과 Wi-Fi CSI 변화를 분석해 센서별 API 키와 함께 Raspberry Pi의 Flask REST API로 전송합니다. Pi는 반복 일정을 오늘의 체크리스트로 만들고, 일정과 센서 이벤트를 함께 점수화합니다. 결과와 알림은 SQLite에 저장되고 사용자 화면과 PIN 보호 보호자 화면이 2초 주기로 동기화됩니다. SQLite에는 외래 키와 WAL 모드를 적용해 여러 화면의 동시 조회와 기록을 처리했습니다.
 
 ### 01:15–02:05 · 반복 일정과 완료 기록
 
@@ -79,7 +79,7 @@
 
 **발표 멘트**
 
-> ESP32 펌웨어에서는 PIR 입력을 250밀리초마다 확인하고, Wi-Fi CSI의 I와 Q 값으로 신호 크기를 계산합니다. 초기 20개 패킷으로 기준선을 만든 뒤 변화율이 설정 임계값을 넘으면 움직임 또는 넘어짐 의심 이벤트를 큐에 넣어 전송합니다. 서버의 실제 점수 엔진은 최근 30분 안에 들어온 신뢰도 0.65 이상의 CSI 넘어짐 신호를 50점 감점합니다. 그래서 지금 100점에서 50점이 되어 ‘주의’로 바뀌었고, 보호자는 결과뿐 아니라 신뢰도와 감점 이유까지 확인할 수 있습니다. 이번 발표에서는 실제 넘어짐을 만들지 않고 제어실이 같은 센서 조건을 재현했습니다.
+> 송신 ESP32는 같은 2.4기가헤르츠 채널에서 초당 50개의 ESP-NOW 측정 패킷을 보냅니다. 수신 ESP32는 PIR 입력을 250밀리초마다 확인하고, Wi-Fi CSI의 I와 Q 값으로 신호 크기를 계산합니다. 초기 250개 패킷으로 기준선을 만든 뒤 변화율이 설정 임계값을 연속으로 넘으면 움직임 또는 넘어짐 의심 이벤트를 큐에 넣어 전송합니다. 서버의 실제 점수 엔진은 최근 30분 안에 들어온 신뢰도 0.65 이상의 CSI 넘어짐 신호를 50점 감점합니다. 그래서 지금 100점에서 50점이 되어 ‘주의’로 바뀌었고, 보호자는 결과뿐 아니라 신뢰도와 감점 이유까지 확인할 수 있습니다. 이번 발표에서는 실제 넘어짐을 만들지 않고 제어실이 같은 센서 조건을 재현했습니다.
 
 ### 03:05–04:10 · 사용자에게 먼저 묻고 필요한 때만 알림
 
@@ -162,7 +162,8 @@
 | 반복 일정 | 요일 비트마스크로 활성 루틴 조회, 시간대가 적용된 오늘 항목 생성, `ON CONFLICT`로 중복 방지, 유예시간 뒤 미수행 전환 | `piuda/scheduler.py`의 `materialize_day()`, `refresh_missed()`, `today_tasks()`; `piuda/schema.sql`의 `task_occurrences` |
 | 완료 처리 | 완료 가능한 항목만 `completed`로 바꾸고 완료 시각·메모 저장 후 점수 재평가 | `piuda/api.py`의 `complete_task()` |
 | ESP32 PIR | GPIO를 250ms 주기로 읽고 상승 시 `pir_motion` 이벤트 큐 등록 | `firmware/esp32_sensor/main/piuda_sensor.c`의 `pir_task()` |
-| ESP32 Wi-Fi CSI | I/Q 크기 평균, 최초 20패킷 기준선, 이동 기준선과 변화율, 설정 임계값·중복 억제로 motion/fall 분류 | `firmware/esp32_sensor/main/piuda_sensor.c`의 `csi_receive_callback()` |
+| ESP32 CSI 송신 | 같은 2.4GHz Wi-Fi 채널에서 고정 로컬 MAC으로 초당 50개 ESP-NOW 측정 패킷 전송 | `firmware/esp32_csi_transmitter/main/piuda_csi_transmitter.c`의 `csi_transmit_task()` |
+| ESP32 Wi-Fi CSI | 지정 송신 MAC만 수신해 I/Q RMS 계산, 최초 250패킷 기준선, 이동 기준선·변화율·연속 임계값·중복 억제로 motion/fall 분류 | `firmware/esp32_sensor/main/piuda_sensor.c`의 `csi_receive_callback()`, `csi_analysis_task()` |
 | 센서 수집 보안 | 센서별 1회성 키 발급, SHA-256 해시 저장, `X-Piuda-Sensor-Key` 검증, 이벤트 형식·신뢰도 검증 | `piuda/api.py`의 `register_sensor()`, `sensor_event()`; `piuda/auth.py`의 `authenticate_sensor()` |
 | 건강 점수 | 일정·최근 움직임·CSI·야간 움직임·센서 연결 상태를 규칙별로 감점하고 0~100으로 제한; 76~100 안심, 51~75 살펴보기, 21~50 주의, 0~20 긴급 | `piuda/risk.py`의 `RISK_RULES`, `level_for_score()`, `evaluate_risk()` |
 | 센서 연결 끊김 | 센서의 마지막 신호 시각, 신호가 없으면 등록 시각을 기준으로 30분 이상 상태 신호가 없을 때 일반 점수 엔진에서 25점 감점 | `piuda/risk.py`의 `SENSOR_OFFLINE_WINDOW`, `_offline_sensor_evidence()`, `evaluate_risk()` |

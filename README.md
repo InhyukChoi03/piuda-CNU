@@ -97,7 +97,12 @@ tail -f /home/cnu/.local/state/piuda/launcher.log
 
 ## ESP32
 
-`firmware/esp32_sensor`는 ESP-IDF 프로젝트입니다. 보호자 대시보드에서 센서를 등록한 뒤 발급된 1회성 키를 `idf.py menuconfig`에 입력합니다. PIR GPIO, Wi-Fi, 서버 URL, CSI 임계값도 같은 메뉴에서 설정합니다.
+두 ESP32를 사용합니다.
+
+- `firmware/esp32_sensor`: PIR 입력, CSI 수신·분석, Piuda 서버 이벤트 전송
+- `firmware/esp32_csi_transmitter`: 같은 채널에서 초당 50개의 CSI 측정용 ESP-NOW 패킷 전송
+
+보호자 대시보드에서 수신기 센서를 등록한 뒤 발급된 1회성 키를 수신기의 `idf.py menuconfig`에 입력합니다. 두 프로젝트의 Wi-Fi와 CSI 송신 MAC을 동일하게 설정하고 각각 빌드·업로드합니다. 상세 배치와 튜닝 방법은 각 펌웨어 README에 있습니다.
 
 ## iOS
 
