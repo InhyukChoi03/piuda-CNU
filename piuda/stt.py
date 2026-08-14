@@ -161,7 +161,8 @@ def transcribe_local(duration_seconds: int | None = None) -> str:
             transcript = _clean_transcript(
                 transcript_path.read_text(encoding="utf-8") if transcript_path.is_file() else inference.stdout
             )
-            if not transcript:
+            filler = transcript.replace(" ", "").rstrip(".?!~")
+            if not transcript or filler in {"아", "어", "음", "으", "아우", "어어", "으음"}:
                 raise LocalSttNoSpeech("목소리를 듣지 못했습니다. 마이크 가까이에서 다시 말씀해 주세요.")
             return transcript
     finally:
