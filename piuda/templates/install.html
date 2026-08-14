@@ -11,7 +11,7 @@
   <title>피우다 · 설치</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/icon-180.png">
-  <link rel="stylesheet" href="/static/app.css?v=20">
+  <link rel="stylesheet" href="/static/app.css?v=21">
 </head>
 <body data-page="install">
   <header class="topbar shell">
@@ -23,7 +23,7 @@
     <section class="install-hero">
       <p class="eyebrow">홈 화면 설치</p>
       <h1>아이폰 홈 화면에<br>피우다를 설치하세요.</h1>
-      <p>같은 Wi-Fi에서 Safari로 열고 홈 화면에 추가하세요.</p>
+      <p>라즈베리파이가 만든 전용 Wi-Fi에 연결한 뒤 Safari에서 여세요.</p>
       <p class="install-status" id="installStatus" aria-live="polite">설치 환경을 확인하고 있습니다.</p>
       <button class="button primary hidden" type="button" data-install-prompt>이 기기에 설치</button>
     </section>
@@ -34,7 +34,7 @@
         <h2>오늘의 생활</h2>
         <p>일정을 확인하고 완료하며 생활 도우미를 사용합니다.</p>
         <div class="qr-frame"><img src="/static/qr/user.png" alt="사용자 화면 QR 코드" width="512" height="512"></div>
-        <div class="install-url" id="userInstallUrl">http://CNU.local:8080/</div>
+        <div class="install-url" id="userInstallUrl">{{ user_url }}</div>
         <button class="button secondary" type="button" data-share="user">주소 공유 또는 복사</button>
       </article>
 
@@ -43,25 +43,35 @@
         <h2>보호자 화면</h2>
         <p>PIN으로 로그인해 건강 점수·일정·센서와 보호자 알림을 확인합니다.</p>
         <div class="qr-frame"><img src="/static/qr/caregiver.png" alt="보호자 화면 QR 코드" width="512" height="512"></div>
-        <div class="install-url" id="caregiverInstallUrl">http://CNU.local:8080/caregiver</div>
+        <div class="install-url" id="caregiverInstallUrl">{{ caregiver_url }}</div>
         <button class="button secondary" type="button" data-share="caregiver">주소 공유 또는 복사</button>
       </article>
+    </section>
+
+    <section class="hotspot-card" aria-label="라즈베리파이 전용 Wi-Fi">
+      <div><p class="eyebrow">전용 센서망</p><h2>{{ hotspot_ssid }}</h2><p>ESP32 두 대와 보호자 아이폰이 이 2.4GHz 네트워크에 자동 또는 수동으로 연결됩니다.</p></div>
+      <dl class="network-details">
+        <div><dt>Wi-Fi 이름</dt><dd>{{ hotspot_ssid }}</dd></div>
+        <div><dt>비밀번호</dt><dd>{{ hotspot_password }}</dd></div>
+        <div><dt>Pi 주소</dt><dd>{{ hotspot_gateway }}</dd></div>
+        <div><dt>데모 화면</dt><dd>{{ demo_url }}</dd></div>
+      </dl>
     </section>
 
     <section class="install-steps">
       <h2>아이폰 설치 방법</h2>
       <div class="step-list">
-        <div class="step"><strong>같은 Wi-Fi 연결</strong>아이폰과 Raspberry Pi를 동일한 공유기에 연결합니다.</div>
+        <div class="step"><strong>전용 Wi-Fi 연결</strong>아이폰 Wi-Fi 설정에서 <b>{{ hotspot_ssid }}</b>를 고르고 비밀번호 <b>{{ hotspot_password }}</b>를 입력합니다.</div>
         <div class="step"><strong>Safari로 열기</strong>QR을 스캔한 뒤 Safari에서 페이지를 엽니다.</div>
         <div class="step"><strong>⋯ 또는 공유 선택</strong>최신 Safari는 아래쪽 ‘⋯’에서 공유를 누릅니다. 이전 버전은 사각형·위쪽 화살표 버튼을 누릅니다.</div>
         <div class="step"><strong>홈 화면에 추가</strong>‘홈 화면에 추가’와 ‘웹 앱으로 열기’를 선택하고 추가합니다.</div>
       </div>
-      <p class="install-note"><strong>CNU.local</strong>이 열리지 않으면 Pi가 현재 받은 IP 주소의 <strong>http://IP주소:8080/install</strong>을 여세요. 이 페이지가 사용자·보호자 주소를 같은 IP로 자동 맞춥니다.</p>
+      <p class="install-note"><strong>{{ hotspot_gateway }}</strong>는 핫스팟의 고정 주소입니다. 인터넷 연결이 없다는 iPhone 안내가 나와도 이 로컬 앱은 그대로 사용할 수 있습니다.</p>
     </section>
   </main>
 
   <footer class="shell footer"><div class="footer-links"><a href="/">사용자 화면</a><a href="/caregiver">보호자 화면</a></div></footer>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="/static/app.js?v=20" defer></script>
+  <script src="/static/app.js?v=21" defer></script>
 </body>
 </html>

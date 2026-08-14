@@ -20,6 +20,12 @@ class Settings:
     inactivity_minutes: int
     task_grace_minutes: int
     kakao_access_token: str | None
+    hotspot_ssid: str
+    hotspot_password: str
+    hotspot_gateway: str
+    demo_sensor_key: str
+    csi_motion_threshold: float
+    csi_strong_threshold: float
 
 
 def _load_dotenv(path: Path) -> None:
@@ -91,4 +97,20 @@ def load_settings(overrides: dict | None = None) -> Settings:
         inactivity_minutes=int(overrides.get("INACTIVITY_MINUTES") or os.getenv("PIUDA_INACTIVITY_MINUTES", "180")),
         task_grace_minutes=int(overrides.get("TASK_GRACE_MINUTES") or os.getenv("PIUDA_TASK_GRACE_MINUTES", "30")),
         kakao_access_token=overrides.get("KAKAO_ACCESS_TOKEN") or os.getenv("PIUDA_KAKAO_ACCESS_TOKEN") or None,
+        hotspot_ssid=str(overrides.get("HOTSPOT_SSID") or os.getenv("PIUDA_HOTSPOT_SSID", "PIUDA-CNU")),
+        hotspot_password=str(
+            overrides.get("HOTSPOT_PASSWORD") or os.getenv("PIUDA_HOTSPOT_PASSWORD", "piuda3017")
+        ),
+        hotspot_gateway=str(
+            overrides.get("HOTSPOT_GATEWAY") or os.getenv("PIUDA_HOTSPOT_GATEWAY", "192.168.4.1")
+        ),
+        demo_sensor_key=str(
+            overrides.get("DEMO_SENSOR_KEY") or os.getenv("PIUDA_DEMO_SENSOR_KEY", "piuda-demo-3017")
+        ),
+        csi_motion_threshold=float(
+            overrides.get("CSI_MOTION_THRESHOLD") or os.getenv("PIUDA_CSI_MOTION_THRESHOLD", "12")
+        ),
+        csi_strong_threshold=float(
+            overrides.get("CSI_STRONG_THRESHOLD") or os.getenv("PIUDA_CSI_STRONG_THRESHOLD", "45")
+        ),
     )

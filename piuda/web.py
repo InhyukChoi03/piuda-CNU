@@ -21,7 +21,16 @@ def caregiver_home():
 
 @web.get("/install")
 def install_guide():
-    return render_template("install.html")
+    gateway = current_app.config["HOTSPOT_GATEWAY"]
+    return render_template(
+        "install.html",
+        hotspot_ssid=current_app.config["HOTSPOT_SSID"],
+        hotspot_password=current_app.config["HOTSPOT_PASSWORD"],
+        hotspot_gateway=gateway,
+        user_url=f"http://{gateway}:8080/",
+        caregiver_url=f"http://{gateway}:8080/caregiver",
+        demo_url=f"http://{gateway}:8080/demo",
+    )
 
 
 @web.get("/demo")

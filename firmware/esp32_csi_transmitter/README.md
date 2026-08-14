@@ -1,4 +1,6 @@
-# Piuda Wi-Fi CSI 송신기
+# Piuda Wi-Fi CSI 송신기 (기존 방식)
+
+새 발표 구성의 `../esp32_pir_ir_csi` 펌웨어는 Raspberry Pi 핫스팟 응답 프레임을 직접 측정하므로 이 별도 송신기가 필요하지 않습니다.
 
 두 ESP32 사이에 일정한 CSI 측정용 패킷을 만들기 위한 ESP-IDF 5.2+ 프로젝트입니다. 이 보드는 센서 이벤트를 서버로 보내지 않고, 같은 Wi-Fi 채널에서 초당 일정한 ESP-NOW 브로드캐스트를 송신합니다. `../esp32_sensor` 수신기가 송신 MAC의 CSI만 골라 PIR과 함께 처리합니다.
 

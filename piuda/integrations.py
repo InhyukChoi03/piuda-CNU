@@ -282,10 +282,11 @@ def send_kakao_alert(text: str) -> bool:
     token = current_app.config.get("KAKAO_ACCESS_TOKEN")
     if not token:
         return False
+    caregiver_url = f"http://{current_app.config['HOTSPOT_GATEWAY']}:8080/caregiver"
     template = {
         "object_type": "text",
         "text": text,
-        "link": {"web_url": "http://CNU.local:8080/caregiver", "mobile_web_url": "http://CNU.local:8080/caregiver"},
+        "link": {"web_url": caregiver_url, "mobile_web_url": caregiver_url},
         "button_title": "피우다 확인",
     }
     body = urllib.parse.urlencode({"template_object": json.dumps(template, ensure_ascii=False)}).encode()

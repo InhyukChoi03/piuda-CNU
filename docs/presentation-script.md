@@ -6,9 +6,9 @@
 
 | 담당 | 역할 | 발표 중 유지할 화면 |
 | --- | --- | --- |
-| A · 발표자/제어실 | 발표, 시나리오 전환, 시간 관리 | `http://CNU.local:8080/demo` |
+| A · 발표자/제어실 | 발표, 시나리오 전환, 시간 관리 | `http://192.168.4.1:8080/demo` |
 | B · 사용자 | Raspberry Pi 사용자 동작, AI 질문, 보호자 알림 요청 | Pi 키오스크 `http://127.0.0.1:8080/?kiosk=1` |
-| C · 보호자 | 알림 확인, 보호자 대시보드 | `http://CNU.local:8080/caregiver` |
+| C · 보호자 | 알림 확인, 보호자 대시보드 | `http://192.168.4.1:8080/caregiver` |
 
 보호자 화면은 발표 전에 PIN `3017`로 로그인한다. 세 화면은 같은 네트워크에 연결하고, 발표 중에는 모두 전면에 둔다.
 
@@ -51,11 +51,11 @@
 
 **조작**
 
-- [A는 사용자 화면, CSI 송신·수신 ESP32 두 대, 보호자 스마트폰을 차례로 가리킨다.]
+- [A는 사용자 화면, 두 공간의 통합 ESP32 센서, 보호자 스마트폰을 차례로 가리킨다.]
 
 **발표 멘트**
 
-> 전체 흐름은 단순합니다. 한 ESP32가 초당 50개의 측정 패킷을 만들고, 다른 ESP32가 PIR과 Wi-Fi CSI 변화를 분석해 센서별 API 키와 함께 Raspberry Pi의 Flask REST API로 전송합니다. Pi는 반복 일정을 오늘의 체크리스트로 만들고, 일정과 센서 이벤트를 함께 점수화합니다. 결과와 알림은 SQLite에 저장되고 사용자 화면과 PIN 보호 보호자 화면이 2초 주기로 동기화됩니다. SQLite에는 외래 키와 WAL 모드를 적용해 여러 화면의 동시 조회와 기록을 처리했습니다.
+> 라즈베리파이는 공유기 대신 PIUDA-CNU라는 2.4기가헤르츠 핫스팟을 직접 만들고 192.168.4.1 고정 주소를 사용합니다. 거실과 침실의 ESP32는 부팅하면 이 네트워크에 자동 연결합니다. 각 보드는 PIR과 Wi-Fi CSI를 함께 측정하고, 거실 보드는 MLX90614 비접촉 온도도 센서 키와 함께 Flask REST API로 보냅니다. Pi는 반복 일정을 오늘의 체크리스트로 만들고 일정과 센서 이벤트를 함께 점수화합니다. 결과와 알림은 SQLite에 저장되고 사용자 화면과 PIN 보호 보호자 화면이 2초 주기로 동기화됩니다.
 
 ### 01:15–02:05 · 반복 일정과 완료 기록
 
@@ -79,7 +79,7 @@
 
 **발표 멘트**
 
-> 송신 ESP32는 같은 2.4기가헤르츠 채널에서 초당 50개의 ESP-NOW 측정 패킷을 보냅니다. 수신 ESP32는 PIR 입력을 250밀리초마다 확인하고, Wi-Fi CSI의 I와 Q 값으로 신호 크기를 계산합니다. 초기 250개 패킷으로 기준선을 만든 뒤 변화율이 설정 임계값을 연속으로 넘으면 움직임 또는 넘어짐 의심 이벤트를 큐에 넣어 전송합니다. 서버의 실제 점수 엔진은 최근 30분 안에 들어온 신뢰도 0.65 이상의 CSI 넘어짐 신호를 50점 감점합니다. 그래서 지금 100점에서 50점이 되어 ‘주의’로 바뀌었고, 보호자는 결과뿐 아니라 신뢰도와 감점 이유까지 확인할 수 있습니다. 이번 발표에서는 실제 넘어짐을 만들지 않고 제어실이 같은 센서 조건을 재현했습니다.
+> 각 ESP32는 라즈베리파이 게이트웨이에 초당 두 번의 작은 ping을 보내 CSI 응답 프레임을 안정적으로 만듭니다. I와 Q 값에서 진폭 평균, 표준편차, 순간 변화량을 계산해 1초 요약으로 전송합니다. 서버는 첫 30초의 정지 표본으로 기기별 기준선과 편차를 교정하고, 기준선을 넘는 변화만 움직임 이벤트로 남깁니다. 큰 CSI 변화만으로 낙상을 확정하지 않고 PIR도 동시에 움직인 경우에만 보호자 확인용 낙상 의심 후보를 만듭니다. 최근 30분의 신뢰도 0.65 이상 후보는 50점을 감점합니다. 비접촉 표면 온도는 화면에 참고값으로만 보여 주며 체온 진단에 사용하지 않습니다. 이번 장면은 실제로 사람을 넘어뜨리지 않고 같은 서버 이벤트를 재현한 것입니다.
 
 ### 03:05–04:10 · 사용자에게 먼저 묻고 필요한 때만 알림
 
@@ -152,10 +152,11 @@
 | --- | --- | --- |
 | 반복 일정 | 요일 비트마스크로 활성 루틴 조회, 시간대가 적용된 오늘 항목 생성, `ON CONFLICT`로 중복 방지, 유예시간 뒤 미수행 전환 | `piuda/scheduler.py`의 `materialize_day()`, `refresh_missed()`, `today_tasks()`; `piuda/schema.sql`의 `task_occurrences` |
 | 완료 처리 | 완료 가능한 항목만 `completed`로 바꾸고 완료 시각·메모 저장 후 점수 재평가 | `piuda/api.py`의 `complete_task()` |
-| ESP32 PIR | GPIO를 250ms 주기로 읽고 상승 시 `pir_motion` 이벤트 큐 등록 | `firmware/esp32_sensor/main/piuda_sensor.c`의 `pir_task()` |
-| ESP32 CSI 송신 | 같은 2.4GHz Wi-Fi 채널에서 고정 로컬 MAC으로 초당 50개 ESP-NOW 측정 패킷 전송 | `firmware/esp32_csi_transmitter/main/piuda_csi_transmitter.c`의 `csi_transmit_task()` |
-| ESP32 Wi-Fi CSI | 지정 송신 MAC만 수신해 I/Q RMS 계산, 최초 250패킷 기준선, 이동 기준선·변화율·연속 임계값·중복 억제로 motion/fall 분류 | `firmware/esp32_sensor/main/piuda_sensor.c`의 `csi_receive_callback()`, `csi_analysis_task()` |
-| 센서 수집 보안 | 센서별 1회성 키 발급, SHA-256 해시 저장, `X-Piuda-Sensor-Key` 검증, 이벤트 형식·신뢰도 검증 | `piuda/api.py`의 `register_sensor()`, `sensor_event()`; `piuda/auth.py`의 `authenticate_sensor()` |
+| Pi 전용 센서망 | NetworkManager AP 모드, SSID·채널 6·게이트웨이 고정, 부팅 자동 연결 | `deploy/setup-hotspot.sh` |
+| ESP32 PIR·온도 | GPIO 14를 100ms 간격으로 읽고 200ms 디바운스, room_1만 MLX90614 측정 | `firmware/esp32_pir_ir_csi/esp32_pir_ir_csi.ino`의 `handleSensors()`, `readTemperatures()` |
+| ESP32 Wi-Fi CSI | Pi AP BSSID만 수신해 I/Q 진폭 통계를 계산하고 게이트웨이 ping으로 프레임 확보 | 같은 파일의 `csiRxCallback()`, `csiProcessingTask()`, `startRouterPing()` |
+| 서버 CSI 분류 | 첫 30개 표본 기준선·편차 교정, 안정 구간만 기준선 갱신, 강한 변화와 PIR 동시 신호만 낙상 후보 생성 | `piuda/sensors.py`의 `_classify_csi()`, `ingest_module_reading()` |
+| 센서 수집 보안·저장 | `X-Piuda-Sensor-Key` 검증, 통합 측정 타입·범위 검증, 최신 상태 1행과 의미 있는 변화 이벤트만 저장 | `piuda/api.py`의 `module_reading()`; `piuda/schema.sql`의 `sensor_module_state` |
 | 건강 점수 | 일정·최근 움직임·CSI·야간 움직임·센서 연결 상태를 규칙별로 감점하고 0~100으로 제한; 76~100 안심, 51~75 살펴보기, 21~50 주의, 0~20 긴급 | `piuda/risk.py`의 `RISK_RULES`, `level_for_score()`, `evaluate_risk()` |
 | 센서 연결 끊김 | 센서의 마지막 신호 시각, 신호가 없으면 등록 시각을 기준으로 30분 이상 상태 신호가 없을 때 일반 점수 엔진에서 25점 감점 | `piuda/risk.py`의 `SENSOR_OFFLINE_WINDOW`, `_offline_sensor_evidence()`, `evaluate_risk()` |
 | 알림 중복 억제 | 같은 점수·근거는 5분 안에 평가 기록 재사용, 같은 단계 알림은 30분 안에 재생성하지 않음 | `piuda/risk.py`의 `evaluate_risk()` |
@@ -167,7 +168,7 @@
 | 음성 입출력 | 웹 SpeechRecognition, 브라우저 SpeechSynthesis, Pi 키오스크의 `/tts`와 gTTS 캐시·espeak fallback | `piuda/static/app.js`의 `setupVoiceInput()`, `speak()`; `piuda/tts.py`; `piuda/api.py`의 `local_tts()` |
 | 보호자 인증 | PIN 해시, 세션 인증 버전, 해시된 bearer token, 로그아웃 시 토큰 폐기 | `piuda/auth.py`; `piuda/schema.sql`의 `caregivers`, `api_tokens` |
 | 로컬 저장 | SQLite 외래 키, WAL, 5초 busy timeout; 일정·센서·점수·알림·대화 분리 저장 | `piuda/db.py`; `piuda/schema.sql` |
-| PWA 배포 | 사용자·보호자 manifest, v20 shell 캐시, 자산별 독립 설치 캐시, `event.waitUntil` 기반 백그라운드 갱신, wheel의 아이콘·QR 패키징 | `piuda/static/service-worker.js`; `piuda/static/manifest.webmanifest`; `piuda/static/caregiver-manifest.webmanifest`; `pyproject.toml` |
+| PWA 배포 | 사용자·보호자 manifest, v21 shell 캐시, 고정 핫스팟 QR, 자산별 독립 설치 캐시, `event.waitUntil` 기반 백그라운드 갱신 | `piuda/static/service-worker.js`; `scripts/generate_pwa_assets.swift`; `pyproject.toml` |
 
 ## 구현 범위를 정확히 말하기
 
@@ -197,11 +198,12 @@
 
 ### 전날 또는 T-30분
 
-- [ ] Pi, 제어실 기기, 보호자 스마트폰을 동일한 Wi-Fi에 연결했다.
-- [ ] `CNU.local`이 두 보조 기기에서 Pi를 가리키는지 확인했다.
+- [ ] Pi에서 `PIUDA-CNU` 핫스팟이 채널 6, 주소 `192.168.4.1`로 켜져 있다.
+- [ ] 제어실 기기와 보호자 스마트폰을 `PIUDA-CNU`에 연결했다.
+- [ ] room_1/room_2 ESP32가 자동 연결되고 30초 CSI 교정을 마쳤다.
 - [ ] Pi에서 `http://127.0.0.1:8080/api/v1/health`가 `status: ok`를 반환한다.
-- [ ] 제어실에서 `http://CNU.local:8080/demo`가 열리고 12개 장면이 보인다.
-- [ ] 보호자 화면을 `http://CNU.local:8080/caregiver`로 열고 PIN `3017`로 로그인했다.
+- [ ] 제어실에서 `http://192.168.4.1:8080/demo`가 열리고 12개 장면이 보인다.
+- [ ] 보호자 화면을 `http://192.168.4.1:8080/caregiver`로 열고 PIN `3017`로 로그인했다.
 - [ ] 사용자 화면의 직접 알림 버튼을 눌러 보호자 팝업·알림음·진동·확인 처리를 검증했다.
 - [ ] 음성 질문을 시연한다면 Pi에 USB 마이크를 연결하고 입력 장치로 인식되는지 확인했다.
 - [ ] `.venv/bin/pytest -q`가 모두 통과하는지 확인했다.

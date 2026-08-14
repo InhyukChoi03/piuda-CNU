@@ -133,6 +133,13 @@ input:focus, select:focus, textarea:focus { border-color: var(--green); box-shad
 .step::before { content: counter(install-step); position: absolute; top: 0; left: 0; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 10px; color: var(--green-dark); background: #d8eee4; font-weight: 900; }
 .step strong { display: block; margin-bottom: 5px; color: white; }
 .install-note { margin-top: 26px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,.16); color: rgba(255,255,255,.68); font-size: 13px; line-height: 1.55; }
+.hotspot-card { margin: 22px 0; padding: clamp(24px, 5vw, 42px); display: grid; grid-template-columns: 1fr 1.2fr; gap: 34px; align-items: center; border: 2px solid #b8d8cb; border-radius: 28px; background: #edf7f2; }
+.hotspot-card h2 { margin: 5px 0 9px; font-size: clamp(30px, 5vw, 46px); letter-spacing: -.04em; }
+.hotspot-card p:last-child { margin: 0; color: var(--muted); line-height: 1.55; }
+.network-details { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.network-details div { min-width: 0; padding: 13px; border: 1px solid rgba(29,74,60,.12); border-radius: 14px; background: white; }
+.network-details dt { margin-bottom: 4px; color: var(--muted); font-size: 11px; font-weight: 800; }
+.network-details dd { margin: 0; overflow-wrap: anywhere; font-size: 14px; font-weight: 850; }
 
 .auth-panel { margin: 9vh auto; width: min(840px, 100%); background: var(--surface); border: 1px solid rgba(29,74,60,.1); border-radius: 32px; padding: clamp(28px, 6vw, 64px); display: grid; grid-template-columns: 1.2fr .8fr; gap: 60px; box-shadow: var(--shadow); }
 .auth-copy h1 { font-size: clamp(36px, 5vw, 58px); letter-spacing: -.055em; margin: 10px 0 16px; }
@@ -166,6 +173,19 @@ input:focus, select:focus, textarea:focus { border-color: var(--green); box-shad
 .compact-item:first-child { border-top: 0; }
 .compact-item strong { display: block; margin-bottom: 4px; }
 .compact-item small { color: var(--muted); }
+.sensor-module-grid { margin-top: 20px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.sensor-module-card { min-width: 0; padding: 17px; border: 1px solid #cfe0d8; border-radius: 18px; background: #f7faf8; }
+.sensor-module-card.needs-check { border-color: #efb39c; background: #fff7f2; }
+.sensor-module-head { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: start; }
+.sensor-module-head strong, .sensor-module-head small { display: block; }
+.sensor-module-head small { margin-top: 4px; color: var(--muted); font-size: 12px; }
+.sensor-values { margin-top: 14px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.sensor-values div { min-width: 0; padding: 10px; border-radius: 11px; background: white; }
+.sensor-values span, .sensor-values strong { display: block; }
+.sensor-values span { margin-bottom: 4px; color: var(--muted); font-size: 10px; font-weight: 750; }
+.sensor-values strong { overflow-wrap: anywhere; font-size: 12px; }
+.sensor-awaiting { margin-top: 14px; padding: 15px; border-radius: 12px; color: var(--muted); background: white; font-size: 12px; }
+.sensor-caveat { margin: 10px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
 .pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 6px 9px; font-size: 11px; font-weight: 850; color: var(--green-dark); background: var(--green-soft); }
 .pill.missed, .pill.danger { color: var(--orange); background: var(--orange-soft); }
 .pill.emergency { color: var(--red); background: var(--red-soft); }
@@ -250,6 +270,7 @@ dialog::backdrop { background: rgba(17, 34, 29, .56); backdrop-filter: blur(4px)
   .welcome { padding-top: 36px; }
   .clock { position: static; margin-top: 18px; }
   .task-list, .metric-grid, .dashboard-grid, .install-grid { grid-template-columns: 1fr; }
+  .hotspot-card, .sensor-module-grid { grid-template-columns: 1fr; }
   .step-list { grid-template-columns: repeat(2, 1fr); }
   .panel.wide { grid-column: auto; }
   .auth-panel { margin: 5vh auto; grid-template-columns: 1fr; gap: 24px; }

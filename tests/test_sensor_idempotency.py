@@ -89,7 +89,7 @@ def test_schema_v3_database_gains_event_id_without_losing_events(tmp_path):
         assert migrated.execute("SELECT COUNT(*) FROM sensor_events").fetchone()[0] == 1
         assert migrated.execute(
             "SELECT value FROM schema_meta WHERE key='schema_version'"
-        ).fetchone()[0] == "5"
+        ).fetchone()[0] == "6"
     finally:
         migrated.close()
 

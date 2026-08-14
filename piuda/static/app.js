@@ -568,12 +568,34 @@ function renderSensors(items) {
       ? `마지막 신호 ${shortDateTime(item.last_seen_at)}`
       : waiting ? "첫 신호 대기 중" : "등록 후 30분 이상 신호 없음";
     const status = needsCheck ? "점검 필요" : waiting ? "신호 대기" : "연결";
-    return `<div class="compact-item"><div><strong>${escapeHTML(item.name)}</strong><small>${escapeHTML(item.location)} · ${detail}</small></div><span class="pill ${needsCheck ? "danger" : ""}">${status}</span></div>`;
+    const csiLabels = {
+      unavailable: "CSI 신호 대기",
+      calibrating: "CSI 기준선 교정 중",
+      stable: "CSI 안정",
+      motion: "CSI 움직임",
+      strong_change: "CSI 강한 변동"
+    };
+    const hasModule = Boolean(item.received_at);
+    const temperature = item.has_ir_sensor
+      ? `<div><span>주변 온도</span><strong>${item.ambient_c == null ? "-" : `${Number(item.ambient_c).toFixed(1)}℃`}</strong></div><div><span>표면 온도</span><strong>${item.object_c == null ? "-" : `${Number(item.object_c).toFixed(1)}℃`}</strong></div>`
+      : '<div><span>온도 센서</span><strong>미장착</strong></div>';
+    const moduleDetails = hasModule ? `<div class="sensor-values">
+      <div><span>PIR</span><strong>${item.pir_state ? "움직임" : "대기"}</strong></div>
+      <div><span>Wi-Fi CSI</span><strong>${escapeHTML(csiLabels[item.csi_status] || "신호 확인")}</strong></div>
+      ${temperature}
+      <div><span>CSI 수신률</span><strong>${Number(item.csi_packet_rate || 0).toFixed(1)} pkt/s</strong></div>
+      <div><span>Wi-Fi 세기</span><strong>${item.csi_rssi ?? "-"} dBm</strong></div>
+    </div>` : '<div class="sensor-awaiting">ESP32 통합 측정값을 기다리고 있습니다.</div>';
+    return `<article class="sensor-module-card ${needsCheck ? "needs-check" : ""}">
+      <div class="sensor-module-head"><div><strong>${escapeHTML(item.name)}</strong><small>${escapeHTML(item.location)} · ${detail}</small></div><span class="pill ${needsCheck ? "danger" : ""}">${status}</span></div>
+      ${moduleDetails}
+      ${item.has_ir_sensor ? '<p class="sensor-caveat">표면 온도는 비접촉 참고값이며 체온 진단값이 아닙니다.</p>' : ''}
+    </article>`;
   }).join("") : '<div class="empty-state">등록된 센서가 없습니다.</div>';
 }
 
 function renderEvents(items) {
-  const labels = { pir_motion: "PIR 움직임", pir_idle: "PIR 무활동", csi_motion: "CSI 움직임", csi_fall: "CSI 낙상 의심", heartbeat: "센서 상태 신호" };
+  const labels = { pir_motion: "PIR 움직임", pir_idle: "PIR 대기 전환", csi_motion: "CSI 움직임", csi_fall: "CSI 강한 변화·PIR 동시 감지", heartbeat: "센서 상태 신호" };
   $("#eventList").innerHTML = items.length ? items.map(item => `<div class="timeline-item"><strong>${escapeHTML(labels[item.event_type] || item.event_type)} · ${escapeHTML(item.location)}</strong>${shortDateTime(item.occurred_at)}${item.confidence != null ? ` · 신뢰도 ${Math.round(item.confidence * 100)}%` : ""}</div>`).join("") : '<div class="empty-state">아직 수신한 센서 기록이 없습니다.</div>';
 }
 

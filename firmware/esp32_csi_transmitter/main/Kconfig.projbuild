@@ -2,11 +2,11 @@ menu "Piuda CSI transmitter configuration"
 
 config PIUDA_TX_WIFI_SSID
     string "Wi-Fi SSID"
-    default ""
+    default "PIUDA-CNU"
 
 config PIUDA_TX_WIFI_PASSWORD
     string "Wi-Fi password"
-    default ""
+    default "piuda3017"
 
 config PIUDA_TX_STATION_MAC
     string "CSI transmitter station MAC"

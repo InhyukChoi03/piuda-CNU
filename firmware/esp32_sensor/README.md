@@ -1,4 +1,6 @@
-# ESP32 PIR + Wi-Fi CSI 센서
+# ESP32 PIR + Wi-Fi CSI 센서 (기존 2보드 방식)
+
+새 발표 구성은 별도 CSI 송신기 없이 Pi 핫스팟을 기준 신호로 사용하는 `../esp32_pir_ir_csi` Arduino 펌웨어를 사용합니다. 이 디렉터리는 기존 ESP-NOW 송신기·수신기 구성을 재현해야 할 때만 유지합니다.
 
 ESP-IDF 5.2 이상을 기준으로 한 **수신기** 펌웨어입니다. 한 보드가 PIR 입력을 읽으면서 두 번째 ESP32가 보내는 ESP-NOW 패킷의 Wi-Fi CSI를 측정하고, 판정 이벤트를 Piuda 서버로 전송합니다. 송신기 코드는 `../esp32_csi_transmitter`에 있습니다.
 

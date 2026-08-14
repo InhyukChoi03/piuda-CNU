@@ -37,6 +37,8 @@ else
 fi
 
 chmod 0755 deploy/piuda-kiosk.sh
+chmod 0755 deploy/setup-hotspot.sh
+deploy/setup-hotspot.sh
 if ! arecord -l >/dev/null 2>&1; then
   echo "안내: 음성 질문을 사용하려면 USB 마이크를 연결하세요." >&2
 fi
@@ -48,4 +50,4 @@ sudo systemctl disable --now piuda.service 2>/dev/null || true
 sudo rm -f /etc/systemd/system/piuda.service
 sudo systemctl daemon-reload
 sudo systemctl reset-failed piuda.service 2>/dev/null || true
-echo "설치 완료: 바탕화면의 '피우다 실행'을 누르면 서버와 화면이 함께 켜집니다."
+echo "설치 완료: 다음 부팅부터 PIUDA-CNU 핫스팟이 자동으로 켜집니다. 지금 전환하려면 deploy/setup-hotspot.sh --activate를 실행하세요."

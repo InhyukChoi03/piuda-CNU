@@ -36,7 +36,7 @@ def test_pwa_assets_have_install_metadata(client):
     assert service_worker.headers["Cache-Control"] == "no-cache"
     assert "api/" in service_worker.get_data(as_text=True)
     worker_script = service_worker.get_data(as_text=True)
-    assert 'const CACHE = "piuda-v20"' in worker_script
+    assert 'const CACHE = "piuda-v21"' in worker_script
     assert 'url.pathname === "/caregiver"' in worker_script
     assert 'fetch(event.request, { cache: "no-store" })' in worker_script
     assert '"/caregiver",' not in worker_script

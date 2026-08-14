@@ -14,7 +14,7 @@ final class AppModel: ObservableObject {
     private var dashboardRefreshInProgress = false
 
     var serverURL: String {
-        get { UserDefaults.standard.string(forKey: "piudaServerURL") ?? "http://CNU.local:8080" }
+        get { UserDefaults.standard.string(forKey: "piudaServerURL") ?? "http://192.168.4.1:8080" }
         set { UserDefaults.standard.set(newValue, forKey: "piudaServerURL") }
     }
 

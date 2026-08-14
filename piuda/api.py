@@ -29,6 +29,7 @@ from .demo import (
 from .integrations import ollama_feedback, send_kakao_alert
 from .risk import LEVELS, RISK_RULES, evaluate_risk
 from .scheduler import CATEGORIES, create_routine, materialize_day, today_tasks, validate_time
+from .sensors import ingest_module_reading
 from .tts import speak_local_async
 from .validation import boolean_value, integer_value, number_value, object_value, text_value
 
@@ -98,6 +99,10 @@ def health():
             "time": iso(),
             "ollama_model": current_app.config["OLLAMA_MODEL"],
             "demo_mode": bool(current_app.config.get("DEMO_MODE")),
+            "hotspot": {
+                "ssid": current_app.config["HOTSPOT_SSID"],
+                "gateway": current_app.config["HOTSPOT_GATEWAY"],
+            },
         }
     )
 
@@ -489,9 +494,22 @@ def dashboard():
 @caregiver_required
 def sensors():
     rows = get_db().execute(
-        "SELECT id, device_uid, name, location, created_at, last_seen_at FROM sensor_devices ORDER BY name"
+        """
+        SELECT d.id, d.device_uid, d.name, d.location, d.created_at, d.last_seen_at,
+               s.has_ir_sensor, s.ambient_c, s.object_c, s.pir_state, s.reason,
+               s.csi_packet_count, s.csi_packet_rate, s.csi_rssi, s.csi_length,
+               s.csi_mean_amplitude, s.csi_amplitude_stddev, s.csi_peak_delta,
+               s.csi_dropped_count, s.csi_score, s.csi_status, s.received_at
+        FROM sensor_devices d
+        LEFT JOIN sensor_module_state s ON s.device_id=d.id
+        ORDER BY d.name
+        """
     ).fetchall()
-    return jsonify({"items": [dict(row) for row in rows]})
+    items = [dict(row) for row in rows]
+    for item in items:
+        if item["has_ir_sensor"] is not None:
+            item["has_ir_sensor"] = bool(item["has_ir_sensor"])
+    return jsonify({"items": items})
 
 
 @api.post("/sensors")
@@ -508,6 +526,93 @@ def register_sensor():
     )
     get_db().commit()
     return jsonify({"device_uid": device_uid, "api_key": api_key}), 201
+
+
+def _module_sensor(device_uid: str, api_key: str):
+    device = authenticate_sensor(device_uid, api_key)
+    if device is not None:
+        return device
+    allowed_demo_ids = {"room_1", "room_2"}
+    demo_key = str(current_app.config.get("DEMO_SENSOR_KEY", ""))
+    if (
+        not current_app.config.get("DEMO_MODE")
+        or device_uid not in allowed_demo_ids
+        or not api_key
+        or not demo_key
+        or not secrets.compare_digest(api_key, demo_key)
+    ):
+        return None
+    names = {
+        "room_1": ("거실 통합 센서", "거실"),
+        "room_2": ("침실 통합 센서", "침실"),
+    }
+    name, location = names[device_uid]
+    database = get_db()
+    database.execute(
+        """
+        INSERT OR IGNORE INTO sensor_devices(
+          device_uid, name, location, api_key_hash, created_at, last_seen_at
+        ) VALUES (?, ?, ?, ?, ?, NULL)
+        """,
+        (device_uid, name, location, token_hash(demo_key), iso()),
+    )
+    database.commit()
+    return authenticate_sensor(device_uid, api_key)
+
+
+@api.post("/module-readings")
+def module_reading():
+    data = payload()
+    device_uid = text_value(data.get("sensor_id"), "sensor_id", max_length=80)
+    has_ir_sensor = boolean_value(data.get("has_ir_sensor"), "has_ir_sensor")
+    api_key = request.headers.get("X-Piuda-Sensor-Key", "")
+    device = _module_sensor(device_uid, api_key)
+    if device is None:
+        return jsonify({"error": "sensor_auth_required"}), 401
+
+    reason = text_value(data.get("reason"), "reason", max_length=24)
+    if reason not in {"FIRST_BOOT", "MOTION_START", "MOTION_END", "PERIODIC"}:
+        raise ValueError("지원하지 않는 reason입니다.")
+    csi = object_value(data.get("csi"), message="csi는 JSON 객체여야 합니다.")
+    reading = {
+        "has_ir_sensor": has_ir_sensor,
+        "ambient": number_value(
+            data.get("ambient"), "ambient", minimum=-40, maximum=125, allow_none=True
+        ),
+        "object": number_value(
+            data.get("object"), "object", minimum=-70, maximum=380, allow_none=True
+        ),
+        "pir": integer_value(data.get("pir"), "pir", minimum=0, maximum=1),
+        "reason": reason,
+        "csi": {
+            "packet_count": integer_value(
+                csi.get("packet_count"), "csi.packet_count", minimum=0, maximum=4_294_967_295
+            ),
+            "packet_rate": number_value(
+                csi.get("packet_rate"), "csi.packet_rate", minimum=0, maximum=5_000
+            ),
+            "rssi": integer_value(csi.get("rssi"), "csi.rssi", minimum=-127, maximum=0),
+            "length": integer_value(csi.get("length"), "csi.length", minimum=0, maximum=1_024),
+            "mean_amplitude": number_value(
+                csi.get("mean_amplitude"), "csi.mean_amplitude", minimum=0, maximum=500
+            ),
+            "amplitude_stddev": number_value(
+                csi.get("amplitude_stddev"), "csi.amplitude_stddev", minimum=0, maximum=500
+            ),
+            "peak_delta": number_value(
+                csi.get("peak_delta"), "csi.peak_delta", minimum=0, maximum=500
+            ),
+            "dropped_count": integer_value(
+                csi.get("dropped_count"), "csi.dropped_count", minimum=0, maximum=4_294_967_295
+            ),
+        },
+    }
+    if has_ir_sensor and (reading["ambient"] is None) != (reading["object"] is None):
+        raise ValueError("ambient와 object는 함께 보내거나 둘 다 null이어야 합니다.")
+
+    result = ingest_module_reading(device, reading)
+    risk = evaluate_and_notify() if result["events"] else None
+    return jsonify({"accepted": True, **result, "risk": risk}), 202
 
 
 @api.post("/sensor-events")

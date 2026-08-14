@@ -8,7 +8,8 @@
 
 - 반복 일정 등록, 오늘 체크리스트 생성, 완료·미수행 기록
 - 개발계획서 가중치를 100점에서 감점하는 건강 점수 엔진
-- ESP32 센서별 API 키 인증과 PIR/CSI 이벤트 수집
+- Raspberry Pi 고정 2.4GHz 핫스팟과 ESP32 자동 연결
+- ESP32 통합 모듈의 PIR·Wi-Fi CSI·MLX90614 비접촉 온도 수집
 - 안심/살펴보기/주의/긴급 4단계 상태 및 보호자 알림 기록
 - 큰 글씨 사용자 화면과 PIN 보호 보호자 대시보드
 - iPhone 홈 화면 설치를 지원하는 PWA와 QR 설치 안내
@@ -20,8 +21,8 @@
 - 사용자 버튼·위험 감지로 생성되는 보호자 확인 알림과 30초 중복 방지
 - Raspberry Pi에서 실측해 선택한 한국어 특화 HyperCLOVA X SEED 1.5B Q4, 최근 대화 기억과 즉시 안전 폴백
 - 브라우저 STT, Raspberry Pi `gTTS` 한국어 음성 출력 및 iOS 온디바이스 음성 입출력
-- SwiftUI iOS 앱, Keychain 토큰 저장, `CNU.local` 로컬 연결
-- ESP-IDF 5.x PIR + Wi-Fi CSI 펌웨어
+- SwiftUI iOS 앱, Keychain 토큰 저장, `192.168.4.1` 고정 로컬 연결
+- Arduino-ESP32 3.3.11 통합 센서 펌웨어와 room_1/room_2 빌드 프로필
 - 키오스크 창과 서버·AI가 함께 켜지고 닫히는 실행 구조와 SQLite WAL 저장
 
 ## 건강 점수 규칙
@@ -61,7 +62,7 @@ piuda run
 
 ### 3인 발표 시연
 
-세 기기를 하나의 네트워크에 연결한 뒤 트리거 담당자는 `http://CNU.local:8080/demo`, 사용자 담당자는 Raspberry Pi 화면, 보호자 담당자는 `http://CNU.local:8080/caregiver`를 엽니다. 제어실의 12개 장면은 2초 안에 자동 반영됩니다. 사용자가 **보호자에게 알림 보내기**를 누르면 보호자 화면에 확인 팝업과 알림음·진동이 표시됩니다.
+Pi가 만든 `PIUDA-CNU` Wi-Fi에 ESP32와 발표 기기를 연결한 뒤 트리거 담당자는 `http://192.168.4.1:8080/demo`, 사용자 담당자는 Raspberry Pi 화면, 보호자 담당자는 `http://192.168.4.1:8080/caregiver`를 엽니다. 제어실의 12개 장면은 2초 안에 자동 반영됩니다. 사용자가 **보호자에게 알림 보내기**를 누르면 보호자 화면에 확인 팝업과 알림음·진동이 표시됩니다.
 
 ## Raspberry Pi 5
 
@@ -73,7 +74,9 @@ cd /home/cnu/piuda
 tail -f /home/cnu/.local/state/piuda/launcher.log
 ```
 
-환경값은 `/home/cnu/piuda/.env`에 설정할 수 있습니다. 비밀키와 카카오 토큰은 Git에 넣지 마세요. Pi의 mDNS가 켜져 있으면 같은 Wi-Fi에서 `http://CNU.local:8080`으로 접속합니다.
+설치 스크립트는 NetworkManager에 `PIUDA-CNU`(비밀번호 `piuda3017`, 채널 6, Pi `192.168.4.1`) 프로필을 만들고 다음 부팅부터 자동 연결합니다. 현재 연결을 즉시 전환하려면 `./deploy/setup-hotspot.sh --activate`를 실행합니다. 이때 기존 Wi-Fi와 SSH는 끊깁니다.
+
+환경값은 `/home/cnu/piuda/.env`에 설정할 수 있습니다. 비밀키와 카카오 토큰은 Git에 넣지 마세요. 발표용 핫스팟·센서 키는 장비의 무설정 연결을 위한 공개 시연 값이므로 실제 운영 전에 반드시 바꾸세요.
 
 음성 질문을 사용하려면 Raspberry Pi에 USB 마이크 또는 마이크가 있는 USB 헤드셋이 필요합니다. Raspberry Pi 5 본체에는 내장 마이크가 없습니다. 텍스트 질문과 보호자 알림은 마이크 없이도 동작합니다.
 
@@ -81,8 +84,8 @@ tail -f /home/cnu/.local/state/piuda/launcher.log
 
 ### iPhone 홈 화면 설치
 
-1. iPhone과 Raspberry Pi를 같은 Wi-Fi에 연결합니다.
-2. Safari에서 `http://CNU.local:8080/install`을 엽니다.
+1. iPhone을 `PIUDA-CNU` Wi-Fi에 연결합니다. 비밀번호는 `piuda3017`입니다.
+2. Safari에서 `http://192.168.4.1:8080/install`을 엽니다.
 3. 사용자 또는 보호자 QR을 선택하거나 주소를 엽니다.
 4. Safari 아래쪽의 **⋯ → 공유** 또는 공유 버튼에서 **홈 화면에 추가** → **웹 앱으로 열기** → **추가**를 누릅니다.
 
@@ -90,16 +93,21 @@ tail -f /home/cnu/.local/state/piuda/launcher.log
 
 ## ESP32
 
-두 ESP32를 사용합니다.
+발표 구성은 통합 ESP32 두 대입니다. 별도의 CSI 송신기는 필요하지 않으며 Pi 핫스팟이 고정된 CSI 기준 신호가 됩니다.
 
-- `firmware/esp32_sensor`: PIR 입력, CSI 수신·분석, Piuda 서버 이벤트 전송
-- `firmware/esp32_csi_transmitter`: 같은 채널에서 초당 50개의 CSI 측정용 ESP-NOW 패킷 전송
+- `room_1`: PIR + Wi-Fi CSI + MLX90614 주변/비접촉 표면 온도
+- `room_2`: PIR + Wi-Fi CSI, 온도 센서 미장착
 
-보호자 대시보드에서 수신기 센서를 등록한 뒤 발급된 1회성 키를 수신기의 `idf.py menuconfig`에 입력합니다. 두 프로젝트의 Wi-Fi와 CSI 송신 MAC을 동일하게 설정하고 각각 빌드·업로드합니다. 상세 배치와 튜닝 방법은 각 펌웨어 README에 있습니다.
+```bash
+./deploy/flash-esp32.sh room_1 /dev/cu.usbserial-110
+./deploy/flash-esp32.sh room_2 /dev/cu.usbserial-110
+```
+
+센서는 `PIUDA-CNU`와 `192.168.4.1`에 자동 연결합니다. 서버는 초당 원시값을 무한히 저장하지 않고 기기별 최신 상태를 갱신하며 PIR 전환·CSI 변화·1분 상태 신호만 이벤트로 남깁니다. CSI 강한 변화와 PIR 움직임이 동시에 확인된 경우에만 낙상 의심 후보를 생성합니다. 첫 30초 교정과 실제 발표 공간 임계값 점검이 필요하며 의료 판정값이 아닙니다. 자세한 내용은 `firmware/esp32_pir_ir_csi/README.md`에 있습니다.
 
 ## iOS
 
-Xcode에서 `ios/Piuda/Piuda.xcodeproj`를 열고 Signing Team을 고른 뒤 실제 iPhone에 실행합니다. 앱은 기본적으로 `http://CNU.local:8080`에 접속하며 설정 탭에서 Pi IP 주소로 변경할 수 있습니다.
+Xcode에서 `ios/Piuda/Piuda.xcodeproj`를 열고 Signing Team을 고른 뒤 실제 iPhone에 실행합니다. 앱은 기본적으로 Pi 핫스팟의 `http://192.168.4.1:8080`에 접속하며 설정 탭에서 바꿀 수 있습니다.
 
 ## 테스트
 

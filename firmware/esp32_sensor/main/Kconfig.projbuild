@@ -2,23 +2,23 @@ menu "Piuda sensor configuration"
 
 config PIUDA_WIFI_SSID
     string "Wi-Fi SSID"
-    default ""
+    default "PIUDA-CNU"
 
 config PIUDA_WIFI_PASSWORD
     string "Wi-Fi password"
-    default ""
+    default "piuda3017"
 
 config PIUDA_SERVER_URL
     string "Piuda server base URL"
-    default "http://192.168.50.242:8080"
+    default "http://192.168.4.1:8080"
 
 config PIUDA_DEVICE_UID
     string "Registered device UID"
-    default "livingroom-esp32"
+    default "room_2"
 
 config PIUDA_SENSOR_KEY
     string "Sensor API key issued by caregiver dashboard"
-    default ""
+    default "piuda-demo-3017"
 
 config PIUDA_LOCATION
     string "Installation location"

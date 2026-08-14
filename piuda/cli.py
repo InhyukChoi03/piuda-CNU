@@ -46,6 +46,7 @@ def reset_demo(app, preserve_auth: bool = False) -> None:
             "alerts",
             "risk_assessments",
             "sensor_events",
+            "sensor_module_state",
             "sensor_devices",
             "task_occurrences",
             "routines",
@@ -90,9 +91,9 @@ def reset_demo(app, preserve_auth: bool = False) -> None:
         cursor = database.execute(
             """
             INSERT INTO sensor_devices(device_uid, name, location, api_key_hash, created_at, last_seen_at)
-            VALUES ('DEMO-PIR-01', '거실 활동 센서', '거실', ?, ?, ?)
+            VALUES ('room_1', '거실 통합 센서', '거실', ?, ?, ?)
             """,
-            (token_hash("demo-sensor-key"), timestamp, timestamp),
+            (token_hash(app.config["DEMO_SENSOR_KEY"]), timestamp, timestamp),
         )
         database.executemany(
             """

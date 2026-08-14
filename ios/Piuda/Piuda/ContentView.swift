@@ -321,7 +321,7 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section("Raspberry Pi 로컬 연결") {
-                    TextField("http://CNU.local:8080", text: $serverURL)
+                    TextField("http://192.168.4.1:8080", text: $serverURL)
                         .textInputAutocapitalization(.never).keyboardType(.URL)
                     Button("연결 저장 및 확인") { Task { await model.updateServerURL(serverURL) } }
                     LabeledContent("상태", value: model.isConnected ? "연결됨" : "연결 안 됨")

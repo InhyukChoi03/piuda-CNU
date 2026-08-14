@@ -149,8 +149,8 @@ try writePNG(
     to: iosAppIconRoot.appendingPathComponent("AppIcon-1024.png"),
     opaque: true
 )
-let userURL = "http://CNU.local:8080/"
-let caregiverURL = "http://CNU.local:8080/caregiver"
+let userURL = "http://192.168.4.1:8080/"
+let caregiverURL = "http://192.168.4.1:8080/caregiver"
 let userQR = qrRoot.appendingPathComponent("user.png")
 let caregiverQR = qrRoot.appendingPathComponent("caregiver.png")
 try writePNG(makeQR(userURL), to: userQR, interpolation: .none)
