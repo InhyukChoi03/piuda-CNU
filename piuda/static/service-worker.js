@@ -1,12 +1,11 @@
-const CACHE = "piuda-v18";
+const CACHE = "piuda-v19";
 const SHELL = [
   "/",
-  "/caregiver",
   "/caregiver-manifest.webmanifest",
   "/install",
   "/static/offline.html",
-  "/static/app.css?v=18",
-  "/static/app.js?v=18",
+  "/static/app.css?v=19",
+  "/static/app.js?v=19",
   "/static/icons/icon-180.png",
   "/static/icons/icon-192.png",
   "/static/icons/icon-512.png",
@@ -43,6 +42,17 @@ self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
+
+  // 보호자 화면은 API와 마이크가 모두 필요한 온라인 전용 화면입니다.
+  // 인증서나 네트워크 문제가 있을 때 오래된 로그인 HTML을 보여 주면
+  // 실제 원인이 가려지므로 navigation 응답을 캐시하지 않습니다.
+  if (event.request.mode === "navigate" && url.pathname === "/caregiver") {
+    event.respondWith(
+      fetch(event.request, { cache: "no-store" })
+        .catch(() => caches.match("/static/offline.html"))
+    );
+    return;
+  }
 
   const network = fetch(event.request).then(response => ({
     response,

@@ -36,6 +36,13 @@ let installPromptEvent = null;
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 
+function networkErrorMessage() {
+  if (window.location.protocol === "https:") {
+    return "통화 서버에 연결하지 못했습니다. 인증서 신뢰 설정과 Wi-Fi를 확인한 뒤 Safari에서 새로고침해 주세요.";
+  }
+  return "Pi 서버에 연결하지 못했습니다. Raspberry Pi와 Wi-Fi 연결을 확인해 주세요.";
+}
+
 window.addEventListener("beforeinstallprompt", event => {
   event.preventDefault();
   installPromptEvent = event;
@@ -53,7 +60,12 @@ async function api(path, options = {}) {
     options.body = JSON.stringify(options.body);
   }
   if (state.token) headers.Authorization = `Bearer ${state.token}`;
-  const response = await fetch(`/api/v1${path}`, { cache: "no-store", ...options, headers });
+  let response;
+  try {
+    response = await fetch(`/api/v1${path}`, { cache: "no-store", ...options, headers });
+  } catch {
+    throw new Error(networkErrorMessage());
+  }
   const data = response.status === 204 ? null : await response.json().catch(() => ({}));
   if (!response.ok) {
     const error = new Error(data?.message || data?.error || `요청 실패 (${response.status})`);
@@ -817,7 +829,7 @@ async function initCaregiver() {
   document.addEventListener("pointerdown", prepareAlertAudio, { once: true });
   if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
     $("#callSecurityNotice").classList.remove("hidden");
-    $("#secureCallLink").href = `https://${window.location.hostname}:8443/caregiver`;
+    $("#secureCallLink").href = `http://${window.location.hostname}:8080/install#call-setup`;
   }
   try {
     const onboard = await api("/onboarding");
@@ -1189,5 +1201,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (document.body.dataset.page === "caregiver") await initCaregiver();
   if (document.body.dataset.page === "install") initInstall();
   if (document.body.dataset.page === "demo") await initDemo();
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/service-worker.js").catch(() => {});
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/service-worker.js", { updateViaCache: "none" })
+      .then(registration => registration.update())
+      .catch(() => {});
+  }
 });

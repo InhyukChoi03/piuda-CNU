@@ -16,7 +16,9 @@ def user_home():
 
 @web.get("/caregiver")
 def caregiver_home():
-    return render_template("caregiver.html")
+    response = make_response(render_template("caregiver.html"))
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @web.get("/install")
@@ -29,12 +31,14 @@ def local_call_certificate():
     certificate = Path(current_app.config["DATA_DIR"]) / "tls" / "piuda-ca.crt"
     if not certificate.is_file():
         abort(404)
-    return send_file(
+    response = send_file(
         certificate,
         mimetype="application/x-x509-ca-cert",
         as_attachment=True,
         download_name="piuda-local-ca.crt",
     )
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @web.get("/demo")

@@ -11,7 +11,7 @@
   <title>피우다 · 보호자</title>
   <link rel="manifest" href="/caregiver-manifest.webmanifest">
   <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/icon-180.png">
-  <link rel="stylesheet" href="/static/app.css?v=18">
+  <link rel="stylesheet" href="/static/app.css?v=19">
 </head>
 <body data-page="caregiver">
   <header class="topbar shell">
@@ -39,8 +39,8 @@
       </section>
 
       <section id="callSecurityNotice" class="call-security-notice hidden">
-        <div><strong>음성 통화 준비가 필요해요</strong><span>최초 한 번만 보안 주소에서 마이크를 허용해 주세요.</span></div>
-        <a id="secureCallLink" class="button secondary" href="https://CNU.local:8443/caregiver">통화 화면 열기</a>
+        <div><strong>음성 통화 설정이 필요합니다</strong><span>인증서를 설치하고 신뢰한 뒤 보안 통화 화면을 열어 주세요.</span></div>
+        <a id="secureCallLink" class="button secondary" href="http://CNU.local:8080/install#call-setup">설정 방법 보기</a>
       </section>
 
       <section class="metric-grid">
@@ -110,6 +110,6 @@
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="/static/app.js?v=18" defer></script>
+  <script src="/static/app.js?v=19" defer></script>
 </body>
 </html>

@@ -35,7 +35,11 @@ def test_pwa_assets_have_install_metadata(client):
     assert service_worker.headers["Service-Worker-Allowed"] == "/"
     assert service_worker.headers["Cache-Control"] == "no-cache"
     assert "api/" in service_worker.get_data(as_text=True)
-    assert 'const CACHE = "piuda-v18"' in service_worker.get_data(as_text=True)
+    worker_script = service_worker.get_data(as_text=True)
+    assert 'const CACHE = "piuda-v19"' in worker_script
+    assert 'url.pathname === "/caregiver"' in worker_script
+    assert 'fetch(event.request, { cache: "no-store" })' in worker_script
+    assert '"/caregiver",' not in worker_script
 
 
 def test_dynamic_ui_copy_uses_actual_state_and_risk_threshold(client):
@@ -55,6 +59,31 @@ def test_dynamic_ui_copy_uses_actual_state_and_risk_threshold(client):
 def test_microphone_security_policy_is_sent(client):
     response = client.get("/caregiver")
     assert response.headers["Permissions-Policy"] == "microphone=(self), camera=()"
+    assert response.headers["Cache-Control"] == "no-store"
+
+
+def test_insecure_caregiver_routes_to_certificate_setup(client):
+    caregiver = client.get("/caregiver").get_data(as_text=True)
+    install = client.get("/install").get_data(as_text=True)
+    script = client.get("/static/app.js").get_data(as_text=True)
+
+    assert "인증서를 설치하고 신뢰한 뒤" in caregiver
+    assert 'href="http://CNU.local:8080/install#call-setup"' in caregiver
+    assert 'id="call-setup"' in install
+    assert "http://${window.location.hostname}:8080/install#call-setup" in script
+    assert "통화 서버에 연결하지 못했습니다." in script
+    assert 'updateViaCache: "none"' in script
+
+
+def test_local_ca_download_is_not_cached(app, client):
+    certificate = app.config["DATA_DIR"] / "tls" / "piuda-ca.crt"
+    certificate.parent.mkdir(parents=True)
+    certificate.write_text("test certificate", encoding="utf-8")
+
+    response = client.get("/piuda-ca.crt")
+
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
 
 
 def test_feedback_has_safe_local_fallback(client):
