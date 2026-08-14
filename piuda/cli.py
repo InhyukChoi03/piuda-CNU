@@ -88,21 +88,30 @@ def reset_demo(app, preserve_auth: bool = False) -> None:
             )
 
         current = now()
-        cursor = database.execute(
+        database.execute(
             """
             INSERT INTO sensor_devices(device_uid, name, location, api_key_hash, created_at, last_seen_at)
             VALUES ('room_1', '거실 통합 센서', '거실', ?, ?, ?)
+            ON CONFLICT(device_uid) DO UPDATE SET
+              name=excluded.name,
+              location=excluded.location,
+              api_key_hash=excluded.api_key_hash,
+              created_at=excluded.created_at,
+              last_seen_at=excluded.last_seen_at
             """,
             (token_hash(app.config["DEMO_SENSOR_KEY"]), timestamp, timestamp),
         )
+        sensor_id = database.execute(
+            "SELECT id FROM sensor_devices WHERE device_uid='room_1'"
+        ).fetchone()["id"]
         database.executemany(
             """
             INSERT INTO sensor_events(device_id, event_type, value, confidence, occurred_at, received_at, payload_json)
             VALUES (?, ?, ?, ?, ?, ?, '{}')
             """,
             [
-                (cursor.lastrowid, "pir_motion", 1, 0.98, iso(current - timedelta(minutes=3)), timestamp),
-                (cursor.lastrowid, "heartbeat", 1, 1.0, timestamp, timestamp),
+                (sensor_id, "pir_motion", 1, 0.98, iso(current - timedelta(minutes=3)), timestamp),
+                (sensor_id, "heartbeat", 1, 1.0, timestamp, timestamp),
             ],
         )
         database.execute(

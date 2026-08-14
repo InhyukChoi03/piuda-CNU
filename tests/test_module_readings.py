@@ -141,3 +141,48 @@ def test_health_advertises_fixed_hotspot_without_password(client):
     health = client.get("/api/v1/health").get_json()
     assert health["hotspot"] == {"ssid": "PIUDA-CNU", "gateway": "192.168.4.1"}
     assert "password" not in health["hotspot"]
+
+
+def test_demo_reset_reuses_room_one_if_it_was_registered_during_reset(app):
+    app.config["DEMO_MODE"] = True
+    from piuda.auth import token_hash
+    from piuda.cli import reset_demo
+    from piuda.clock import iso
+
+    with app.app_context():
+        database = get_db()
+        database.execute(
+            """
+            INSERT INTO sensor_devices(device_uid, name, location, api_key_hash, created_at)
+            VALUES ('room_1', '임시 센서', '임시 위치', ?, ?)
+            """,
+            (token_hash("temporary"), iso()),
+        )
+        # 삭제 직후 들어온 센서 요청을 트리거로 재현합니다. 예전 INSERT는
+        # 이 행과 충돌했지만 현재 시드는 같은 UID를 안전하게 갱신합니다.
+        database.execute(
+            """
+            CREATE TRIGGER recreate_room_one_after_delete
+            AFTER DELETE ON sensor_devices
+            WHEN OLD.device_uid='room_1'
+            BEGIN
+              INSERT INTO sensor_devices(
+                device_uid, name, location, api_key_hash, created_at, last_seen_at
+              ) VALUES (
+                'room_1', '동시 등록 센서', '임시 위치', 'temporary-hash',
+                '2026-08-14T16:00:00+09:00', NULL
+              );
+            END
+            """
+        )
+        database.commit()
+
+    reset_demo(app)
+
+    with app.app_context():
+        devices = get_db().execute(
+            "SELECT device_uid, name, location FROM sensor_devices"
+        ).fetchall()
+    assert [dict(row) for row in devices] == [
+        {"device_uid": "room_1", "name": "거실 통합 센서", "location": "거실"}
+    ]
