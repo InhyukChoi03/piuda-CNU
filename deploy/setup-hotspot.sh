@@ -40,6 +40,9 @@ sudo nmcli connection modify "$profile_name" \
   802-11-wireless.hidden no \
   802-11-wireless.powersave 2 \
   802-11-wireless-security.key-mgmt wpa-psk \
+  802-11-wireless-security.proto rsn \
+  802-11-wireless-security.pairwise ccmp \
+  802-11-wireless-security.group ccmp \
   802-11-wireless-security.psk "$hotspot_password" \
   ipv4.method shared \
   ipv4.addresses "$hotspot_gateway/24" \

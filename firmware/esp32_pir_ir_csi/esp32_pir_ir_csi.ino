@@ -427,7 +427,19 @@ bool connectWiFi() {
     delay(250);
   }
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[WiFi] PIUDA-CNU 연결 실패 - 5초 뒤 다시 시도합니다.");
+    Serial.printf("[WiFi] PIUDA-CNU 연결 실패(status=%d) - 주변 2.4GHz AP를 확인합니다.\n",
+                  (int)WiFi.status());
+    const int count = WiFi.scanNetworks(false, true);
+    bool targetVisible = false;
+    for (int i = 0; i < count; ++i) {
+      if (WiFi.SSID(i) == PIUDA_WIFI_SSID) targetVisible = true;
+      Serial.printf("[WiFi] scan ssid=%s rssi=%d channel=%d auth=%d\n",
+                    WiFi.SSID(i).c_str(), WiFi.RSSI(i), WiFi.channel(i),
+                    (int)WiFi.encryptionType(i));
+    }
+    WiFi.scanDelete();
+    Serial.printf("[WiFi] target_visible=%s - 5초 뒤 다시 시도합니다.\n",
+                  targetVisible ? "yes" : "no");
     return false;
   }
 
