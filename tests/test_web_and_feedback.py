@@ -36,7 +36,7 @@ def test_pwa_assets_have_install_metadata(client):
     assert service_worker.headers["Cache-Control"] == "no-cache"
     assert "api/" in service_worker.get_data(as_text=True)
     worker_script = service_worker.get_data(as_text=True)
-    assert 'const CACHE = "piuda-v21"' in worker_script
+    assert 'const CACHE = "piuda-v22"' in worker_script
     assert 'url.pathname === "/caregiver"' in worker_script
     assert 'fetch(event.request, { cache: "no-store" })' in worker_script
     assert '"/caregiver",' not in worker_script
@@ -53,6 +53,18 @@ def test_dynamic_ui_copy_uses_actual_state_and_risk_threshold(client):
     assert "30 * 60 * 1000" in script
     assert 'needsCheck ? "점검 필요"' in script
     assert "현재 확인된 위험 요인이 없습니다." in script
+
+
+def test_caregiver_shows_live_peak_delta_instead_of_wifi_strength(client):
+    caregiver = client.get("/caregiver").get_data(as_text=True)
+    script = client.get("/static/app.js").get_data(as_text=True)
+
+    assert "Peak Delta" in caregiver
+    assert "Peak Delta · LIVE" in script
+    assert "Wi-Fi 세기" not in script
+    assert "data-sensor-peak-delta" in script
+    assert "refreshSensors" in script
+    assert "}, 1000);" in script
 
 
 def test_browser_media_security_policy_is_sent(client):

@@ -184,6 +184,13 @@ input:focus, select:focus, textarea:focus { border-color: var(--green); box-shad
 .sensor-values span, .sensor-values strong { display: block; }
 .sensor-values span { margin-bottom: 4px; color: var(--muted); font-size: 10px; font-weight: 750; }
 .sensor-values strong { overflow-wrap: anywhere; font-size: 12px; }
+.sensor-values .sensor-live-value { background: #e8f5ef; animation: sensor-value-flash .55s ease-out; }
+.sensor-values .sensor-live-label { display: flex; align-items: center; gap: 5px; color: var(--green-dark); }
+.sensor-live-label i { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: #20a476; box-shadow: 0 0 0 0 rgba(32,164,118,.4); animation: sensor-live-pulse 1s infinite; }
+.sensor-values .sensor-live-value strong { color: var(--green-dark); font-size: 19px; font-variant-numeric: tabular-nums; line-height: 1.05; }
+.sensor-live-value small { display: block; margin-top: 4px; color: var(--muted); font-size: 9px; font-variant-numeric: tabular-nums; }
+@keyframes sensor-value-flash { from { background: #bfe8d5; } to { background: #e8f5ef; } }
+@keyframes sensor-live-pulse { 70% { box-shadow: 0 0 0 6px rgba(32,164,118,0); } 100% { box-shadow: 0 0 0 0 rgba(32,164,118,0); } }
 .sensor-awaiting { margin-top: 14px; padding: 15px; border-radius: 12px; color: var(--muted); background: white; font-size: 12px; }
 .sensor-caveat { margin: 10px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
 .pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 6px 9px; font-size: 11px; font-weight: 850; color: var(--green-dark); background: var(--green-soft); }
@@ -490,4 +497,4 @@ dialog::backdrop { background: rgba(17, 34, 29, .56); backdrop-filter: blur(4px)
   body[data-page="demo"] .demo-group-title h2 { font-size: 27px; }
 }
 
-@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }

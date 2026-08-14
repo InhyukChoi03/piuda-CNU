@@ -9,6 +9,7 @@ const state = {
   lastReply: "",
   userRefreshing: false,
   caregiverRefreshing: false,
+  sensorRefreshing: false,
   demoRefreshing: false,
   lastAlertId: null,
   alertAudioContext: null,
@@ -385,6 +386,9 @@ async function initCaregiver() {
   setInterval(() => {
     if (state.token && !document.hidden) loadDashboard();
   }, 2000);
+  setInterval(() => {
+    if (state.token && !document.hidden) refreshSensors();
+  }, 1000);
   window.addEventListener("focus", () => {
     if (state.token) loadDashboard();
   });
@@ -440,7 +444,7 @@ async function loadDashboard() {
   if (state.caregiverRefreshing || !state.token) return;
   state.caregiverRefreshing = true;
   try {
-    const [result, sensors] = await Promise.all([api("/dashboard"), api("/sensors")]);
+    const result = await api("/dashboard");
     $("#authPanel").classList.add("hidden");
     $("#dashboard").classList.remove("hidden");
     $("#logoutButton").classList.remove("hidden");
@@ -451,9 +455,9 @@ async function loadDashboard() {
     renderCareRisk(result.risk);
     renderCareTasks(result.tasks);
     renderAlerts(result.alerts);
-    renderSensors(sensors.items);
     renderEvents(result.sensor_events);
     notifyNewCaregiverAlert(result.alerts);
+    await refreshSensors();
   } catch (error) {
     if (error.status === 401) {
       state.token = "";
@@ -463,6 +467,19 @@ async function loadDashboard() {
     } else toast(error.message);
   } finally {
     state.caregiverRefreshing = false;
+  }
+}
+
+async function refreshSensors() {
+  if (state.sensorRefreshing || !state.token || document.hidden) return;
+  state.sensorRefreshing = true;
+  try {
+    const sensors = await api("/sensors");
+    renderSensors(sensors.items);
+  } catch {
+    // 인증 만료와 연결 오류는 2초 주기의 전체 대시보드 갱신에서 한 번만 처리합니다.
+  } finally {
+    state.sensorRefreshing = false;
   }
 }
 
@@ -576,6 +593,10 @@ function renderSensors(items) {
       strong_change: "CSI 강한 변동"
     };
     const hasModule = Boolean(item.received_at);
+    const receivedAt = item.received_at ? new Date(item.received_at) : null;
+    const liveTime = receivedAt && !Number.isNaN(receivedAt.valueOf())
+      ? receivedAt.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+      : "-";
     const temperature = item.has_ir_sensor
       ? `<div><span>주변 온도</span><strong>${item.ambient_c == null ? "-" : `${Number(item.ambient_c).toFixed(1)}℃`}</strong></div><div><span>표면 온도</span><strong>${item.object_c == null ? "-" : `${Number(item.object_c).toFixed(1)}℃`}</strong></div>`
       : '<div><span>온도 센서</span><strong>미장착</strong></div>';
@@ -584,7 +605,11 @@ function renderSensors(items) {
       <div><span>Wi-Fi CSI</span><strong>${escapeHTML(csiLabels[item.csi_status] || "신호 확인")}</strong></div>
       ${temperature}
       <div><span>CSI 수신률</span><strong>${Number(item.csi_packet_rate || 0).toFixed(1)} pkt/s</strong></div>
-      <div><span>Wi-Fi 세기</span><strong>${item.csi_rssi ?? "-"} dBm</strong></div>
+      <div class="sensor-live-value" data-sensor-peak-delta="${Number(item.csi_peak_delta || 0).toFixed(2)}">
+        <span class="sensor-live-label"><i aria-hidden="true"></i>Peak Delta · LIVE</span>
+        <strong>${Number(item.csi_peak_delta || 0).toFixed(2)}</strong>
+        <small>1초 갱신 · ${escapeHTML(liveTime)}</small>
+      </div>
     </div>` : '<div class="sensor-awaiting">ESP32 통합 측정값을 기다리고 있습니다.</div>';
     return `<article class="sensor-module-card ${needsCheck ? "needs-check" : ""}">
       <div class="sensor-module-head"><div><strong>${escapeHTML(item.name)}</strong><small>${escapeHTML(item.location)} · ${detail}</small></div><span class="pill ${needsCheck ? "danger" : ""}">${status}</span></div>
