@@ -289,8 +289,8 @@ def test_concurrent_risk_evaluations_create_one_assessment(app):
     assert count == 1
 
 
-def test_call_alert_does_not_suppress_real_risk_alert(app, client, auth_headers, fixed_now):
-    client.post("/api/v1/caregiver-call", json={})
+def test_direct_alert_does_not_suppress_real_risk_alert(app, client, auth_headers, fixed_now):
+    client.post("/api/v1/caregiver-alert")
     sensor = register_sensor(client, auth_headers, uid="alert-dedupe")
     response = send_event(
         client,

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#102f28">
   <meta name="format-detection" content="telephone=no">
   <title>피우다 · 발표 제어실</title>
-  <link rel="stylesheet" href="/static/app.css?v=19">
+  <link rel="stylesheet" href="/static/app.css?v=20">
 </head>
 <body data-page="demo">
   <header class="topbar shell">
@@ -45,7 +45,7 @@
         <article class="demo-scenario-card" data-scenario-card="{{ scenario.key }}">
           <div class="demo-scenario-heading"><span>{{ scenario.icon }}</span><div><h3>{{ scenario.title }}</h3><p>{{ scenario.summary }}</p></div></div>
           <p class="demo-expected"><strong>예상 화면</strong>{{ scenario.expected }}</p>
-          <button class="button {% if scenario.key in ['inactivity_no_response', 'emergency', 'fall', 'caregiver_call'] %}alert-demo{% else %}secondary{% endif %}" type="button" data-trigger-scenario="{{ scenario.key }}">이 장면 실행</button>
+          <button class="button {% if scenario.key in ['inactivity_no_response', 'emergency', 'fall', 'caregiver_alert'] %}alert-demo{% else %}secondary{% endif %}" type="button" data-trigger-scenario="{{ scenario.key }}">이 장면 실행</button>
         </article>
         {% endfor %}
       </div>
@@ -54,6 +54,6 @@
   </main>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="/static/app.js?v=19" defer></script>
+  <script src="/static/app.js?v=20" defer></script>
 </body>
 </html>

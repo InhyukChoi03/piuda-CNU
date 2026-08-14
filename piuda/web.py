@@ -1,6 +1,4 @@
-from pathlib import Path
-
-from flask import Blueprint, abort, current_app, make_response, render_template, send_file, send_from_directory
+from flask import Blueprint, abort, current_app, make_response, render_template, send_from_directory
 
 from .auth import is_private_request
 from .demo import DEMO_GROUPS, scenario_catalog
@@ -24,21 +22,6 @@ def caregiver_home():
 @web.get("/install")
 def install_guide():
     return render_template("install.html")
-
-
-@web.get("/piuda-ca.crt")
-def local_call_certificate():
-    certificate = Path(current_app.config["DATA_DIR"]) / "tls" / "piuda-ca.crt"
-    if not certificate.is_file():
-        abort(404)
-    response = send_file(
-        certificate,
-        mimetype="application/x-x509-ca-cert",
-        as_attachment=True,
-        download_name="piuda-local-ca.crt",
-    )
-    response.headers["Cache-Control"] = "no-store"
-    return response
 
 
 @web.get("/demo")

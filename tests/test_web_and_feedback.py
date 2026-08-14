@@ -36,7 +36,7 @@ def test_pwa_assets_have_install_metadata(client):
     assert service_worker.headers["Cache-Control"] == "no-cache"
     assert "api/" in service_worker.get_data(as_text=True)
     worker_script = service_worker.get_data(as_text=True)
-    assert 'const CACHE = "piuda-v19"' in worker_script
+    assert 'const CACHE = "piuda-v20"' in worker_script
     assert 'url.pathname === "/caregiver"' in worker_script
     assert 'fetch(event.request, { cache: "no-store" })' in worker_script
     assert '"/caregiver",' not in worker_script
@@ -47,43 +47,31 @@ def test_dynamic_ui_copy_uses_actual_state_and_risk_threshold(client):
 
     assert 'element.lastChild.textContent = "연결됨"' in script
     assert "로컬 연결됨" not in script
-    assert "김피움님과 통화 중" not in script
-    assert "`${state.userName}님과 통화 중`" in script
-    assert 'microphoneStream("user")' in script
-    assert 'microphoneStream("caregiver")' in script
+    assert "통화 중" not in script
+    assert "RTCPeerConnection" not in script
+    assert 'api("/caregiver-alert", { method: "POST" })' in script
     assert "30 * 60 * 1000" in script
     assert 'needsCheck ? "점검 필요"' in script
     assert "현재 확인된 위험 요인이 없습니다." in script
 
 
-def test_microphone_security_policy_is_sent(client):
+def test_browser_media_security_policy_is_sent(client):
     response = client.get("/caregiver")
     assert response.headers["Permissions-Policy"] == "microphone=(self), camera=()"
     assert response.headers["Cache-Control"] == "no-store"
 
 
-def test_insecure_caregiver_routes_to_certificate_setup(client):
+def test_caregiver_install_uses_single_http_origin(client):
     caregiver = client.get("/caregiver").get_data(as_text=True)
     install = client.get("/install").get_data(as_text=True)
     script = client.get("/static/app.js").get_data(as_text=True)
 
-    assert "인증서를 설치하고 신뢰한 뒤" in caregiver
-    assert 'href="http://CNU.local:8080/install#call-setup"' in caregiver
-    assert 'id="call-setup"' in install
-    assert "http://${window.location.hostname}:8080/install#call-setup" in script
-    assert "통화 서버에 연결하지 못했습니다." in script
+    assert "인증서" not in caregiver
+    assert "음성 통화" not in caregiver
+    assert "보호자 음성 통화 준비" not in install
+    assert "`${origin}/caregiver`" in script
+    assert "8443" not in script
     assert 'updateViaCache: "none"' in script
-
-
-def test_local_ca_download_is_not_cached(app, client):
-    certificate = app.config["DATA_DIR"] / "tls" / "piuda-ca.crt"
-    certificate.parent.mkdir(parents=True)
-    certificate.write_text("test certificate", encoding="utf-8")
-
-    response = client.get("/piuda-ca.crt")
-
-    assert response.status_code == 200
-    assert response.headers["Cache-Control"] == "no-store"
 
 
 def test_feedback_has_safe_local_fallback(client):
@@ -101,14 +89,7 @@ def test_user_script_periodically_refreshes_without_http_cache(client):
     assert "}, 2000);" in script
 
 
-def test_call_pagehide_cleanup_is_keepalive_and_bfcache_safe(client):
-    script = client.get("/static/app.js").get_data(as_text=True)
-    assert 'window.addEventListener("pagehide", cleanupCallOnPageHide)' in script
-    assert "keepalive: true" in script
-    assert 'finishCallLocally("", callId);' in script
-
-
-def test_same_wifi_demo_console_and_caregiver_call_ui(app, client):
+def test_same_wifi_demo_console_and_caregiver_alert_ui(app, client):
     app.config["DEMO_MODE"] = True
     from piuda.cli import reset_demo
 
@@ -119,12 +100,11 @@ def test_same_wifi_demo_console_and_caregiver_call_ui(app, client):
     assert "발표 시나리오 제어실" in page
     assert "장면을 선택하면 사용자·보호자 화면이 2초 안에 갱신됩니다." in page
     assert page.count("data-trigger-scenario=") == 12
-    assert 'id="caregiverCallButton"' in user_page
-    assert 'api("/caregiver-call", { method: "POST", body: { replace: true } })' in script
-    assert "window.location.hostname}:8443/caregiver" in script
+    assert 'id="caregiverAlertButton"' in user_page
+    assert 'api("/caregiver-alert", { method: "POST" })' in script
     assert "triggerScenario" in script
     assert "notifyNewCaregiverAlert" in script
-    assert "RTCPeerConnection" in script
+    assert "RTCPeerConnection" not in script
     assert "data-wellness-response" in user_page
 
 

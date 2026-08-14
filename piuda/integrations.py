@@ -285,7 +285,7 @@ def send_kakao_alert(text: str) -> bool:
     template = {
         "object_type": "text",
         "text": text,
-        "link": {"web_url": "https://CNU.local:8443/caregiver", "mobile_web_url": "https://CNU.local:8443/caregiver"},
+        "link": {"web_url": "http://CNU.local:8080/caregiver", "mobile_web_url": "http://CNU.local:8080/caregiver"},
         "button_title": "피우다 확인",
     }
     body = urllib.parse.urlencode({"template_object": json.dumps(template, ensure_ascii=False)}).encode()

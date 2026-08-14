@@ -7,7 +7,6 @@ profile_dir="/home/cnu/.config/piuda-chromium"
 project_dir="/home/cnu/piuda"
 data_dir="/home/cnu/.local/share/piuda"
 model="hf.co/naver-ellm/HyperCLOVAX-SEED-Text-Instruct-1.5B-GGUF:Q4_K_M"
-tls_dir="$data_dir/tls"
 runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 state_dir="/home/cnu/.local/state/piuda"
 log_file="$state_dir/launcher.log"
@@ -79,10 +78,8 @@ if /usr/bin/systemctl --quiet is-active piuda.service 2>/dev/null; then
 fi
 
 # 서버는 이 창의 자식 프로세스입니다. 창이 닫히면 cleanup이 함께 종료합니다.
-/usr/bin/env PIUDA_DATA_DIR="$data_dir" "$project_dir/deploy/ensure-tls.sh" >>"$log_file" 2>&1
 /usr/bin/env "${piuda_env[@]}" \
   /usr/bin/python3 -m piuda.cli run --host 0.0.0.0 --port 8080 \
-    --tls-port 8443 --tls-cert "$tls_dir/piuda-server.crt" --tls-key "$tls_dir/piuda-server-key.pem" \
     >>"$log_file" 2>&1 &
 server_pid=$!
 
@@ -101,7 +98,7 @@ if [[ "$server_ready" != "1" ]]; then
 fi
 
 if ! /usr/bin/arecord -l >>"$log_file" 2>&1; then
-  echo "경고: 오디오 입력 장치가 없습니다. 통화에는 USB 마이크 또는 헤드셋이 필요합니다." >>"$log_file"
+  echo "안내: 음성 질문을 사용하려면 USB 마이크 또는 헤드셋을 연결하세요." >>"$log_file"
 fi
 
 # 데모 DB는 서버 시작 시 초기화되며, AI는 이전 캐시를 비우고 다시 적재합니다.

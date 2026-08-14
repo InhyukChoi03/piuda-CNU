@@ -89,6 +89,51 @@ def test_schema_v3_database_gains_event_id_without_losing_events(tmp_path):
         assert migrated.execute("SELECT COUNT(*) FROM sensor_events").fetchone()[0] == 1
         assert migrated.execute(
             "SELECT value FROM schema_meta WHERE key='schema_version'"
-        ).fetchone()[0] == "4"
+        ).fetchone()[0] == "5"
+    finally:
+        migrated.close()
+
+
+def test_schema_v5_removes_legacy_call_data(tmp_path):
+    database_path = tmp_path / "legacy-call.db"
+    init_database(database_path)
+    connection = sqlite3.connect(database_path)
+    connection.executescript(
+        """
+        CREATE TABLE calls (
+          id TEXT PRIMARY KEY,
+          status TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        );
+        CREATE TABLE call_signals (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          call_id TEXT NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
+          sender TEXT NOT NULL,
+          kind TEXT NOT NULL,
+          payload_json TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        );
+        INSERT INTO calls(id, status, created_at) VALUES ('old', 'ringing', '2026-08-12T12:00:00+09:00');
+        INSERT INTO call_signals(call_id, sender, kind, payload_json, created_at)
+        VALUES ('old', 'user', 'offer', '{}', '2026-08-12T12:00:00+09:00');
+        INSERT INTO alerts(level, title, message, created_at)
+        VALUES ('danger', '보호자 통화 요청', '예전 요청', '2026-08-12T12:00:00+09:00');
+        INSERT INTO alerts(level, title, message, created_at)
+        VALUES ('danger', '사용자 확인 요청', '유지할 요청', '2026-08-12T12:01:00+09:00');
+        """
+    )
+    connection.commit()
+    connection.close()
+
+    init_database(database_path)
+
+    migrated = sqlite3.connect(database_path)
+    try:
+        tables = {row[0] for row in migrated.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        assert "calls" not in tables
+        assert "call_signals" not in tables
+        titles = {row[0] for row in migrated.execute("SELECT title FROM alerts")}
+        assert "보호자 통화 요청" not in titles
+        assert "사용자 확인 요청" in titles
     finally:
         migrated.close()

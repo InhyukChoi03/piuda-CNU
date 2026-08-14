@@ -70,7 +70,7 @@ def test_demo_catalog_contains_every_presentation_scenario(app, client):
     assert {item["key"] for item in result["items"]} == {
         "normal", "medication_reminder", "medication_done", "all_completed",
         "inactivity_check", "inactivity_ok", "inactivity_no_response",
-        "sensor_offline", "fall", "emergency", "recovered", "caregiver_call",
+        "sensor_offline", "fall", "emergency", "recovered", "caregiver_alert",
     }
     for item in result["items"]:
         triggered = client.post(f"/api/v1/demo/scenarios/{item['key']}")
@@ -111,73 +111,41 @@ def test_demo_scenarios_change_all_three_screens_without_revoking_login(app, cli
     assert completed["summary"]["completed"] == 5
 
 
-def test_user_can_call_caregiver_without_duplicate_alerts(app, client):
+def test_user_can_alert_caregiver_without_duplicates(app, client, monkeypatch):
     app.config["DEMO_MODE"] = True
     reset_demo(app)
+    sent = []
+    monkeypatch.setattr("piuda.api.send_kakao_alert", sent.append)
 
-    first = client.post("/api/v1/caregiver-call")
-    second = client.post("/api/v1/caregiver-call")
+    first = client.post("/api/v1/caregiver-alert")
+    second = client.post("/api/v1/caregiver-alert")
     assert first.status_code == 201
     assert first.get_json()["created"] is True
     assert second.status_code == 200
     assert second.get_json()["created"] is False
-    assert first.get_json()["call"]["status"] == "ringing"
+    assert len(sent) == 1
 
     login = client.post("/api/v1/auth/login", json={"pin": "3017"})
     headers = {"Authorization": f"Bearer {login.get_json()['token']}"}
     alerts = client.get("/api/v1/alerts", headers=headers).get_json()["items"]
     assert len(alerts) == 1
     assert alerts[0]["level"] == "danger"
-    assert alerts[0]["title"] == "보호자 통화 요청"
+    assert alerts[0]["title"] == "사용자 확인 요청"
+    assert "김피움님" in alerts[0]["message"]
 
 
-def test_local_call_signaling_round_trip(app, client):
+def test_removed_call_endpoints_and_tables_are_absent(app, client):
     app.config["DEMO_MODE"] = True
     reset_demo(app)
-    call = client.post("/api/v1/caregiver-call").get_json()["call"]
-    login = client.post("/api/v1/auth/login", json={"pin": "3017"})
-    headers = {"Authorization": f"Bearer {login.get_json()['token']}"}
-    offer = {
-        "type": "offer",
-        "sdp": (
-            "v=0\r\no=- 0 0 IN IP4 127.0.0.1\r\n"
-            "s=Piuda demo offer\r\nt=0 0\r\n"
-            "m=audio 9 UDP/TLS/RTP/SAVPF 111\r\n"
-        ),
-    }
-    posted = client.post(
-        f"/api/v1/calls/{call['id']}/signals",
-        json={"sender": "user", "kind": "offer", "signal": offer},
-    )
-    assert posted.status_code == 201
-    received = client.get(
-        f"/api/v1/calls/{call['id']}/signals?recipient=caregiver&after=0",
-        headers=headers,
-    ).get_json()
-    assert received["items"][0]["payload"] == offer
-    answer = {
-        "type": "answer",
-        "sdp": (
-            "v=0\r\no=- 0 0 IN IP4 127.0.0.1\r\n"
-            "s=Piuda demo answer\r\nt=0 0\r\n"
-            "m=audio 9 UDP/TLS/RTP/SAVPF 111\r\n"
-        ),
-    }
-    answered = client.post(
-        f"/api/v1/calls/{call['id']}/signals",
-        json={"sender": "caregiver", "kind": "answer", "signal": answer},
-        headers=headers,
-    )
-    assert answered.status_code == 201
-    active = client.post(
-        f"/api/v1/calls/{call['id']}/status", json={"status": "active"}, headers=headers
-    ).get_json()["call"]
-    assert active["status"] == "active"
-    ended = client.post(
-        f"/api/v1/calls/{call['id']}/status", json={"status": "ended"}
-    ).get_json()["call"]
-    assert ended["status"] == "ended"
-    assert client.get("/api/v1/calls/current").get_json()["call"] is None
+    assert client.post("/api/v1/caregiver-call").status_code == 404
+    assert client.get("/api/v1/calls/current").status_code == 404
+    with app.app_context():
+        tables = {
+            row["name"]
+            for row in get_db().execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+    assert "calls" not in tables
+    assert "call_signals" not in tables
 
 
 def test_wellness_check_escalates_only_after_no_response(app, client):

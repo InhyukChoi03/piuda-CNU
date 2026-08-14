@@ -11,7 +11,7 @@
   <title>피우다 · 설치</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/icon-180.png">
-  <link rel="stylesheet" href="/static/app.css?v=19">
+  <link rel="stylesheet" href="/static/app.css?v=20">
 </head>
 <body data-page="install">
   <header class="topbar shell">
@@ -41,22 +41,11 @@
       <article class="install-card">
         <p class="eyebrow">가족·보호자</p>
         <h2>보호자 화면</h2>
-        <p>PIN으로 로그인해 건강 점수·일정·센서를 확인하고 사용자와 통화합니다.</p>
+        <p>PIN으로 로그인해 건강 점수·일정·센서와 보호자 알림을 확인합니다.</p>
         <div class="qr-frame"><img src="/static/qr/caregiver.png" alt="보호자 화면 QR 코드" width="512" height="512"></div>
-        <div class="install-url" id="caregiverInstallUrl">https://CNU.local:8443/caregiver</div>
+        <div class="install-url" id="caregiverInstallUrl">http://CNU.local:8080/caregiver</div>
         <button class="button secondary" type="button" data-share="caregiver">주소 공유 또는 복사</button>
       </article>
-    </section>
-
-    <section class="install-steps call-setup" id="call-setup">
-      <p class="eyebrow">최초 1회만</p>
-      <h2>보호자 음성 통화 준비</h2>
-      <div class="step-list">
-        <div class="step"><strong>1. 인증서 받기</strong><a class="text-button" href="/piuda-ca.crt" download>피우다 통화 인증서</a>를 받습니다.</div>
-        <div class="step"><strong>2. 프로파일 설치</strong>설정 → 일반 → VPN 및 기기 관리에서 설치합니다.</div>
-        <div class="step"><strong>3. 인증서 신뢰</strong>설정 → 일반 → 정보 → 인증서 신뢰 설정에서 Piuda를 켭니다.</div>
-        <div class="step"><strong>4. 보안 주소 열기</strong><a id="secureCallLink" class="text-button" href="https://CNU.local:8443/caregiver">보호자 통화 화면</a>에서 마이크를 허용합니다.</div>
-      </div>
     </section>
 
     <section class="install-steps">
@@ -67,12 +56,12 @@
         <div class="step"><strong>⋯ 또는 공유 선택</strong>최신 Safari는 아래쪽 ‘⋯’에서 공유를 누릅니다. 이전 버전은 사각형·위쪽 화살표 버튼을 누릅니다.</div>
         <div class="step"><strong>홈 화면에 추가</strong>‘홈 화면에 추가’와 ‘웹 앱으로 열기’를 선택하고 추가합니다.</div>
       </div>
-      <p class="install-note"><strong>CNU.local</strong>이 열리지 않으면 Pi가 현재 받은 IP 주소의 <strong>http://IP주소:8080/install</strong>을 여세요. 이 페이지가 보호자 통화 주소도 같은 IP로 자동 맞춥니다.</p>
+      <p class="install-note"><strong>CNU.local</strong>이 열리지 않으면 Pi가 현재 받은 IP 주소의 <strong>http://IP주소:8080/install</strong>을 여세요. 이 페이지가 사용자·보호자 주소를 같은 IP로 자동 맞춥니다.</p>
     </section>
   </main>
 
   <footer class="shell footer"><div class="footer-links"><a href="/">사용자 화면</a><a href="/caregiver">보호자 화면</a></div></footer>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="/static/app.js?v=19" defer></script>
+  <script src="/static/app.js?v=20" defer></script>
 </body>
 </html>

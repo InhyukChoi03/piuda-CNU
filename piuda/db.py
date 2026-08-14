@@ -31,6 +31,15 @@ def init_database(path: str | Path) -> None:
             }
             if "event_id" not in columns:
                 connection.execute("ALTER TABLE sensor_events ADD COLUMN event_id TEXT")
+        alerts_exists = connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='alerts'"
+        ).fetchone()
+        if alerts_exists:
+            connection.execute("DELETE FROM alerts WHERE title='보호자 통화 요청'")
+        # v5에서는 음성 통화 기능과 WebRTC 신호 저장소를 제거했습니다.
+        # 이전 설치본의 불필요한 통화 데이터도 마이그레이션 시 함께 삭제합니다.
+        connection.execute("DROP TABLE IF EXISTS call_signals")
+        connection.execute("DROP TABLE IF EXISTS calls")
         connection.executescript(schema)
         connection.commit()
     finally:

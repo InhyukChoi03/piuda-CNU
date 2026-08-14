@@ -84,7 +84,7 @@ a { color: inherit; }
 .button:disabled { cursor: not-allowed; opacity: .55; transform: none; }
 .button.primary { background: var(--green); color: white; box-shadow: 0 8px 22px rgba(29,107,84,.18); }
 .button.secondary { color: var(--green-dark); background: var(--green-soft); }
-.caregiver-call-button { min-height: 44px; color: white; background: var(--red); box-shadow: 0 8px 22px rgba(169,48,53,.2); }
+.caregiver-alert-button { min-height: 44px; color: white; background: var(--red); box-shadow: 0 8px 22px rgba(169,48,53,.2); }
 .task-card .button { min-width: 92px; }
 .text-button, .icon-button { padding: 5px; color: var(--green); border: 0; background: transparent; font-weight: 800; cursor: pointer; }
 
@@ -193,28 +193,16 @@ dialog::backdrop { background: rgba(17, 34, 29, .56); backdrop-filter: blur(4px)
 .local-alert-content time { display: block; margin: 15px 0 24px; color: var(--muted); font-size: 14px; }
 .local-alert-content .button { width: 100%; min-height: 58px; font-size: 18px; }
 
-.wellness-dialog, .call-dialog { width: min(620px, calc(100% - 24px)); border: 4px solid var(--green-dark); background: #fffdf8; }
-.wellness-dialog::backdrop, .call-dialog::backdrop { background: rgba(8, 29, 24, .78); backdrop-filter: blur(5px); }
-.wellness-content, .call-content { padding: clamp(28px, 6vw, 46px); text-align: center; }
-.wellness-icon, .call-avatar { width: 82px; height: 82px; margin: 0 auto 20px; display: grid; place-items: center; border-radius: 50%; color: white; background: var(--green); font-size: 42px; font-weight: 950; box-shadow: 0 0 0 12px var(--green-soft); }
-.wellness-content h2, .call-content h2 { margin: 8px 0 13px; font-size: clamp(32px, 6vw, 48px); line-height: 1.08; letter-spacing: -.05em; }
-.wellness-content > p:not(.eyebrow), .call-content > p:not(.eyebrow) { margin: 0 auto; max-width: 500px; color: #40544d; font-size: 19px; font-weight: 720; line-height: 1.55; }
+.wellness-dialog { width: min(620px, calc(100% - 24px)); border: 4px solid var(--green-dark); background: #fffdf8; }
+.wellness-dialog::backdrop { background: rgba(8, 29, 24, .78); backdrop-filter: blur(5px); }
+.wellness-content { padding: clamp(28px, 6vw, 46px); text-align: center; }
+.wellness-icon { width: 82px; height: 82px; margin: 0 auto 20px; display: grid; place-items: center; border-radius: 50%; color: white; background: var(--green); font-size: 42px; font-weight: 950; box-shadow: 0 0 0 12px var(--green-soft); }
+.wellness-content h2 { margin: 8px 0 13px; font-size: clamp(32px, 6vw, 48px); line-height: 1.08; letter-spacing: -.05em; }
+.wellness-content > p:not(.eyebrow) { margin: 0 auto; max-width: 500px; color: #40544d; font-size: 19px; font-weight: 720; line-height: 1.55; }
 .wellness-countdown { margin-top: 15px !important; color: var(--amber) !important; font-size: 15px !important; }
-.wellness-actions, .call-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 26px; }
-.wellness-actions .button, .call-actions .button, .call-content > .call-end { min-height: 66px; font-size: 20px; }
-.wellness-ok, .call-answer { color: white; background: var(--green); }
-.call-end { color: white; background: var(--red); }
-.call-content > .call-end { width: 100%; margin-top: 24px; }
-.call-pulse { height: 56px; margin: 22px auto 5px; display: flex; align-items: center; justify-content: center; gap: 8px; }
-.call-pulse span { width: 9px; height: 22px; border-radius: 999px; background: var(--green); animation: call-wave 1s ease-in-out infinite; }
-.call-pulse span:nth-child(2) { height: 42px; animation-delay: .15s; }
-.call-pulse span:nth-child(3) { height: 30px; animation-delay: .3s; }
-.call-dialog.connected .call-avatar { background: #2d8a67; box-shadow: 0 0 0 12px #d8eee5; }
-.call-security-notice { margin-bottom: 14px; padding: 15px 18px; display: flex; align-items: center; justify-content: space-between; gap: 14px; border: 2px solid #d69a3f; border-radius: 18px; background: #fff3d9; }
-.call-security-notice strong, .call-security-notice span { display: block; }
-.call-security-notice span { margin-top: 3px; color: #6f552d; font-size: 13px; }
-.call-security-notice .button { flex: 0 0 auto; }
-@keyframes call-wave { 0%, 100% { transform: scaleY(.45); opacity: .55; } 50% { transform: scaleY(1); opacity: 1; } }
+.wellness-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 26px; }
+.wellness-actions .button { min-height: 66px; font-size: 20px; }
+.wellness-ok { color: white; background: var(--green); }
 
 .demo-console { padding-bottom: 80px; }
 .demo-hero { padding: 52px 0 28px; }
@@ -286,9 +274,7 @@ dialog::backdrop { background: rgba(17, 34, 29, .56); backdrop-filter: blur(4px)
   .step-list { grid-template-columns: 1fr; }
   .risk-metric { align-items: flex-start; }
   .brand small { display: none; }
-  .wellness-actions, .call-actions { grid-template-columns: 1fr; }
-  .call-security-notice { align-items: stretch; flex-direction: column; }
-  .call-security-notice .button { width: 100%; }
+  .wellness-actions { grid-template-columns: 1fr; }
 }
 
 /* Raspberry Pi 5 kiosk · 1024 × 600 */
@@ -301,7 +287,7 @@ dialog::backdrop { background: rgba(17, 34, 29, .56); backdrop-filter: blur(4px)
   body[data-page="user"] .brand-copy strong { font-size: 22px; }
   body[data-page="user"] .brand-copy small { margin-top: 2px; color: #31534a; font-size: 11px; }
   body[data-page="user"] .header-actions { gap: 12px; }
-  body[data-page="user"] .caregiver-call-button { min-height: 38px; padding: 0 13px; border: 2px solid #5d1115; border-radius: 10px; font-size: 14px; box-shadow: none; }
+  body[data-page="user"] .caregiver-alert-button { min-height: 38px; padding: 0 13px; border: 2px solid #5d1115; border-radius: 10px; font-size: 14px; box-shadow: none; }
   body[data-page="user"] .demo-badge { padding: 6px 10px; border: 2px solid #7b4b08; font-size: 12px; }
   body[data-page="user"] .connection { color: #213f37; font-size: 13px; }
   body[data-page="user"] .user-layout {
@@ -419,11 +405,11 @@ dialog::backdrop { background: rgba(17, 34, 29, .56); backdrop-filter: blur(4px)
   body[data-page="user"] .assistant-form .primary { color: #102b25; background: #ffd980; }
   body[data-page="user"] .input-hint { margin: -1px 1px 0; color: #e9fff6; font-size: 12px; text-align: center; }
   body[data-page="user"] > .footer { display: none; }
-  body[data-page="user"] .wellness-dialog, body[data-page="user"] .call-dialog { width: min(680px, calc(100% - 36px)); border-width: 5px; }
-  body[data-page="user"] .wellness-content, body[data-page="user"] .call-content { padding: 24px 34px; }
-  body[data-page="user"] .wellness-icon, body[data-page="user"] .call-avatar { width: 68px; height: 68px; margin-bottom: 14px; font-size: 34px; }
-  body[data-page="user"] .wellness-content h2, body[data-page="user"] .call-content h2 { font-size: 40px; }
-  body[data-page="user"] .wellness-actions .button, body[data-page="user"] .call-content > .call-end { min-height: 70px; font-size: 22px; }
+  body[data-page="user"] .wellness-dialog { width: min(680px, calc(100% - 36px)); border-width: 5px; }
+  body[data-page="user"] .wellness-content { padding: 24px 34px; }
+  body[data-page="user"] .wellness-icon { width: 68px; height: 68px; margin-bottom: 14px; font-size: 34px; }
+  body[data-page="user"] .wellness-content h2 { font-size: 40px; }
+  body[data-page="user"] .wellness-actions .button { min-height: 70px; font-size: 22px; }
 }
 
 @media (max-width: 820px) {

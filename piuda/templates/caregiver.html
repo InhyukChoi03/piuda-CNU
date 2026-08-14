@@ -11,7 +11,7 @@
   <title>피우다 · 보호자</title>
   <link rel="manifest" href="/caregiver-manifest.webmanifest">
   <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/icon-180.png">
-  <link rel="stylesheet" href="/static/app.css?v=19">
+  <link rel="stylesheet" href="/static/app.css?v=20">
 </head>
 <body data-page="caregiver">
   <header class="topbar shell">
@@ -36,11 +36,6 @@
       <section class="dashboard-head">
         <div><p class="eyebrow" id="careDate">오늘의 돌봄 현황</p><h1><span id="careUserName">사용자</span>님의 하루</h1><p>마지막 갱신 <span id="lastRefresh">-</span></p></div>
         <div class="dashboard-actions"><button id="refreshButton" class="button secondary">새로고침</button></div>
-      </section>
-
-      <section id="callSecurityNotice" class="call-security-notice hidden">
-        <div><strong>음성 통화 설정이 필요합니다</strong><span>인증서를 설치하고 신뢰한 뒤 보안 통화 화면을 열어 주세요.</span></div>
-        <a id="secureCallLink" class="button secondary" href="http://CNU.local:8080/install#call-setup">설정 방법 보기</a>
       </section>
 
       <section class="metric-grid">
@@ -93,23 +88,7 @@
     </div>
   </dialog>
 
-  <dialog id="caregiverCallDialog" class="call-dialog" aria-labelledby="caregiverCallTitle">
-    <div class="call-content">
-      <div class="call-avatar" aria-hidden="true">피</div>
-      <p class="eyebrow">음성 통화</p>
-      <h2 id="caregiverCallTitle">김피움님이 부르고 있어요</h2>
-      <p id="caregiverCallStatus">통화 받기를 눌러 연결하세요.</p>
-      <div class="call-pulse" aria-hidden="true"><span></span><span></span><span></span></div>
-      <audio id="caregiverRemoteAudio" autoplay playsinline></audio>
-      <div class="call-actions" id="incomingCallActions">
-        <button id="caregiverCallDecline" class="button call-end" type="button">거절</button>
-        <button id="caregiverCallAnswer" class="button call-answer" type="button">통화 받기</button>
-      </div>
-      <button id="caregiverCallEnd" class="button call-end hidden" type="button">통화 종료</button>
-    </div>
-  </dialog>
-
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="/static/app.js?v=19" defer></script>
+  <script src="/static/app.js?v=20" defer></script>
 </body>
 </html>

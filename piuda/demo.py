@@ -28,7 +28,7 @@ DEMO_SCENARIOS = (
     {"key": "fall", "group": "response", "icon": "09", "title": "넘어짐 의심", "summary": "Wi-Fi CSI의 넘어짐 의심 신호를 사용자와 보호자 화면에 표시합니다.", "expected": "건강 점수 50 · 보호자 즉시 확인"},
     {"key": "emergency", "group": "response", "icon": "10", "title": "복합 긴급 상황", "summary": "일정 미수행·장시간 무활동·넘어짐 신호가 함께 감지됩니다.", "expected": "건강 점수 0 · 긴급 확인"},
     {"key": "recovered", "group": "response", "icon": "11", "title": "활동 재확인", "summary": "움직임이 다시 감지되면 건강 점수가 100으로 돌아갑니다.", "expected": "건강 점수 100 · 회복 안내"},
-    {"key": "caregiver_call", "group": "response", "icon": "12", "title": "보호자와 통화", "summary": "사용자 화면의 통화 버튼으로 마이크를 열고 보호자에게 연결합니다.", "expected": "사용자 화면에서 ‘보호자와 통화’ 클릭 · 스마트폰에서 수락"},
+    {"key": "caregiver_alert", "group": "response", "icon": "12", "title": "보호자 알림 요청", "summary": "사용자가 버튼을 눌러 보호자에게 직접 확인 알림을 보냅니다.", "expected": "보호자 화면에 확인 팝업 · 소리·진동 알림"},
 )
 
 
@@ -145,18 +145,18 @@ def _activate(
     database.commit()
 
 
-def create_caregiver_call_alert() -> tuple[dict, bool]:
+def create_caregiver_request_alert() -> tuple[dict, bool]:
     database = get_db()
     recent = database.execute(
-        "SELECT * FROM alerts WHERE title='보호자 통화 요청' AND acknowledged_at IS NULL ORDER BY id DESC LIMIT 1"
+        "SELECT * FROM alerts WHERE title='사용자 확인 요청' AND acknowledged_at IS NULL ORDER BY id DESC LIMIT 1"
     ).fetchone()
     if recent and now() - parse_iso(recent["created_at"]) < timedelta(seconds=30):
         return dict(recent), False
     profile = database.execute("SELECT user_name FROM profile WHERE id=1").fetchone()
     user_name = profile["user_name"] if profile else "사용자"
     cursor = database.execute(
-        "INSERT INTO alerts(risk_assessment_id, level, title, message, created_at) VALUES (NULL, 'danger', '보호자 통화 요청', ?, ?)",
-        (f"{user_name}님이 직접 통화를 요청했습니다.", iso()),
+        "INSERT INTO alerts(risk_assessment_id, level, title, message, created_at) VALUES (NULL, 'danger', '사용자 확인 요청', ?, ?)",
+        (f"{user_name}님이 보호자의 확인을 요청했습니다.", iso()),
     )
     database.commit()
     row = database.execute("SELECT * FROM alerts WHERE id=?", (cursor.lastrowid,)).fetchone()
@@ -248,10 +248,13 @@ def trigger_demo_scenario(key: str) -> dict | None:
             scenario, 100, [], "움직임이 다시 확인됐어요. 현재 건강 점수는 100점이에요.",
             ("info", "활동이 다시 확인되었습니다", "거실 움직임이 감지되어 안심 상태로 돌아왔습니다."),
         )
-    elif key == "caregiver_call":
-        # getUserMedia는 사용자 동작이 있어야 실행할 수 있습니다. 제어실에서
-        # offer 없는 ringing 레코드를 만들면 보호자 화면이 영원히 연결 중에
-        # 머무르므로, 이 장면은 사용자 화면의 실제 버튼을 안내합니다.
-        _activate(scenario, 100, [], "화면 위의 ‘보호자와 통화’ 버튼을 눌러 주세요.")
+    elif key == "caregiver_alert":
+        _activate(
+            scenario,
+            100,
+            [],
+            "보호자에게 확인 알림을 보냈어요.",
+            ("danger", "사용자 확인 요청", "김피움님이 보호자의 확인을 요청했습니다."),
+        )
 
     return current_demo_state()

@@ -11,10 +11,10 @@ Raspberry Pi 5 · Flask REST API
         ├─ Health Engine: 일정 + 센서 이벤트 → 0~100점 건강 점수
         ├─ Wellness Check: 낮 시간 무활동 → 사용자 확인 → 필요할 때만 보호자 알림
         ├─ AI Feedback: HyperCLOVA X SEED + DB 대화 기억 + 규칙 기반 폴백
-        └─ SQLite WAL: 프로필·일정·센서·건강 상태·알림·통화
+        └─ SQLite WAL: 프로필·일정·센서·건강 상태·알림·대화
         │
         ├──────── 사용자 웹/PWA
-        ├──────── 보호자 웹 대시보드 + 로컬 WebRTC 음성 통화
+        ├──────── 보호자 웹 대시보드 + 확인 팝업·알림음·진동
         ├──────── 발표 제어실 (/demo)
         └──────── SwiftUI iOS 앱 (CNU.local)
 ```
@@ -30,7 +30,7 @@ Raspberry Pi 5 · Flask REST API
 | 보호자 현황·미수행·알림 | `/caregiver`, `/api/v1/dashboard` |
 | 로컬 LLM 피드백 | `piuda/integrations.py`, HyperCLOVA X SEED |
 | STT/TTS | 웹 Speech API, iOS Speech/AVSpeech |
-| 사용자 선확인·보호자 통화 | `piuda/demo.py`, `piuda/calls.py`, WebRTC |
+| 사용자 선확인·보호자 직접 알림 | `piuda/demo.py`, `/api/v1/caregiver-alert`, 보호자 PWA |
 | WebView/스마트폰 확장 | 반응형 PWA + 네이티브 SwiftUI 앱 |
 | Raspberry Pi 5 통합 | `deploy/piuda-kiosk.sh`, 바탕화면 실행 아이콘 |
 | 사용자 인증·개인정보 최소화 | 보호자 PIN, bearer token, 센서별 키, 카메라 미사용 |
@@ -45,8 +45,7 @@ Raspberry Pi 5 · Flask REST API
 - `POST /api/v1/sensors`, `POST /api/v1/sensor-events`
 - `GET /api/v1/dashboard`, `GET /api/v1/alerts`
 - `POST /api/v1/wellness-check`
-- `POST /api/v1/caregiver-call`, `GET /api/v1/calls/current`
-- `GET|POST /api/v1/calls/{id}/signals`
+- `POST /api/v1/caregiver-alert`
 - `POST /api/v1/feedback`
 
 보호자 변경·조회 API는 세션 또는 bearer token이 필요하며 센서 수집 API는 센서별 `X-Piuda-Sensor-Key`를 사용합니다.

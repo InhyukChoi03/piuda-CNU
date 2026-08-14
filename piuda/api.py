@@ -11,7 +11,6 @@ from flask import Blueprint, current_app, jsonify, request, session
 
 from .auth import (
     authenticate_sensor,
-    caregiver_authenticated,
     caregiver_required,
     create_caregiver,
     is_private_request,
@@ -20,18 +19,9 @@ from .auth import (
     token_hash,
 )
 from .clock import iso, now, parse_iso
-from .calls import (
-    CallConflictError,
-    add_signal,
-    call_by_id,
-    current_call,
-    signals_for,
-    start_call,
-    update_call_status,
-)
 from .db import get_db
 from .demo import (
-    create_caregiver_call_alert,
+    create_caregiver_request_alert,
     current_demo_state,
     scenario_catalog,
     trigger_demo_scenario,
@@ -96,11 +86,6 @@ def conflict(error):
     return jsonify({"error": "conflict", "message": "이미 등록되었거나 값이 올바르지 않습니다."}), 409
 
 
-@api.errorhandler(CallConflictError)
-def call_conflict(error):
-    return jsonify({"error": "call_conflict", "message": str(error)}), 409
-
-
 @api.get("/health")
 def health():
     database = get_db()
@@ -160,75 +145,14 @@ def run_demo_scenario(scenario_key: str):
     return jsonify(_demo_snapshot())
 
 
-@api.post("/caregiver-call")
-def caregiver_call():
+@api.post("/caregiver-alert")
+def caregiver_alert():
     if not is_private_request():
         return jsonify({"error": "local_network_only"}), 403
-    data = optional_payload()
-    replace_existing = (
-        boolean_value(data["replace"], "replace") if "replace" in data else False
-    )
-    call, created = start_call(replace_existing=replace_existing)
-    alert, _ = create_caregiver_call_alert()
-    return jsonify({"ok": True, "created": created, "alert": alert, "call": call}), 201 if created else 200
-
-
-@api.get("/calls/current")
-def get_current_call():
-    if not is_private_request():
-        return jsonify({"error": "local_network_only"}), 403
-    return jsonify({"call": current_call()})
-
-
-@api.post("/calls/<call_id>/status")
-def set_call_status(call_id: str):
-    if not is_private_request():
-        return jsonify({"error": "local_network_only"}), 403
-    status = text_value(payload().get("status"), "통화 상태", max_length=20)
-    if status in {"active", "declined"} and not caregiver_authenticated():
-        return jsonify({"error": "caregiver_auth_required"}), 401
-    call = update_call_status(call_id, status)
-    if call is None:
-        return jsonify({"error": "call_not_found"}), 404
-    return jsonify({"call": call})
-
-
-@api.get("/calls/<call_id>/signals")
-def get_call_signals(call_id: str):
-    if not is_private_request():
-        return jsonify({"error": "local_network_only"}), 403
-    try:
-        after = min(max(int(request.args.get("after", 0)), 0), 2_147_483_647)
-    except (TypeError, ValueError) as error:
-        raise ValueError("after는 정수여야 합니다.") from error
-    recipient = str(request.args.get("recipient", ""))
-    if recipient not in {"user", "caregiver"}:
-        raise ValueError("올바르지 않은 통화 수신자입니다.")
-    if recipient == "caregiver" and not caregiver_authenticated():
-        return jsonify({"error": "caregiver_auth_required"}), 401
-    call = call_by_id(call_id)
-    if call is None:
-        return jsonify({"error": "call_not_found"}), 404
-    return jsonify({"items": signals_for(call_id, recipient, after), "call": call})
-
-
-@api.post("/calls/<call_id>/signals")
-def post_call_signal(call_id: str):
-    if not is_private_request():
-        return jsonify({"error": "local_network_only"}), 403
-    data = payload()
-    sender = text_value(data.get("sender"), "통화 신호 발신자", max_length=20)
-    if sender not in {"user", "caregiver"}:
-        raise ValueError("올바르지 않은 통화 신호 발신자입니다.")
-    if sender == "caregiver" and not caregiver_authenticated():
-        return jsonify({"error": "caregiver_auth_required"}), 401
-    signal = data.get("signal")
-    if not isinstance(signal, dict):
-        raise ValueError("통화 신호 객체가 필요합니다.")
-    item = add_signal(call_id, sender, text_value(data.get("kind"), "통화 신호 종류", max_length=20), signal)
-    if item is None:
-        return jsonify({"error": "call_not_found"}), 404
-    return jsonify({"item": item}), 201
+    alert, created = create_caregiver_request_alert()
+    if created:
+        send_kakao_alert(f"[피우다] {alert['title']} · {alert['message']}")
+    return jsonify({"ok": True, "created": created, "alert": alert}), 201 if created else 200
 
 
 @api.post("/wellness-check")
@@ -557,7 +481,6 @@ def dashboard():
             "risk": risk,
             "alerts": [dict(row) for row in alerts_rows],
             "sensor_events": [dict(row) for row in sensor_rows],
-            "call": current_call(),
         }
     )
 

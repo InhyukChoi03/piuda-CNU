@@ -13,7 +13,7 @@ if [[ "$(pwd)" != "$project_dir" ]]; then
 fi
 
 sudo apt-get update
-sudo apt-get install -y python3-flask python3-waitress python3-gtts mpg123 espeak-ng alsa-utils chromium curl avahi-daemon fcitx5 fcitx5-hangul fcitx5-frontend-gtk3 openssl
+sudo apt-get install -y python3-flask python3-waitress python3-gtts mpg123 espeak-ng alsa-utils chromium curl avahi-daemon fcitx5 fcitx5-hangul fcitx5-frontend-gtk3
 if ! command -v ollama >/dev/null 2>&1; then
   echo "Ollama가 설치되어 있지 않습니다. https://ollama.com/download/linux 에서 설치한 뒤 다시 실행하세요." >&2
   exit 1
@@ -36,10 +36,9 @@ else
   PIUDA_DATA_DIR=/home/cnu/.local/share/piuda /usr/bin/python3 -m piuda.cli init
 fi
 
-chmod 0755 deploy/piuda-kiosk.sh deploy/ensure-tls.sh
-PIUDA_DATA_DIR=/home/cnu/.local/share/piuda deploy/ensure-tls.sh
+chmod 0755 deploy/piuda-kiosk.sh
 if ! arecord -l >/dev/null 2>&1; then
-  echo "경고: 오디오 입력 장치를 찾지 못했습니다. 음성 통화 전 USB 마이크를 연결하세요." >&2
+  echo "안내: 음성 질문을 사용하려면 USB 마이크를 연결하세요." >&2
 fi
 install -m 0755 deploy/piuda.desktop /home/cnu/Desktop/Piuda.desktop
 gio set /home/cnu/Desktop/Piuda.desktop metadata::trusted true || true

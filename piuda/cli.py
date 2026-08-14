@@ -43,8 +43,6 @@ def reset_demo(app, preserve_auth: bool = False) -> None:
 
         database = get_db()
         scene_tables = (
-            "call_signals",
-            "calls",
             "alerts",
             "risk_assessments",
             "sensor_events",
@@ -61,7 +59,7 @@ def reset_demo(app, preserve_auth: bool = False) -> None:
         if not preserve_auth:
             database.execute(
                 "DELETE FROM sqlite_sequence WHERE name IN "
-                "('call_signals','alerts','risk_assessments','sensor_events','sensor_devices','task_occurrences',"
+                "('alerts','risk_assessments','sensor_events','sensor_devices','task_occurrences',"
                 "'routines','api_tokens','caregivers','feedback_messages')"
             )
         timestamp = iso()
@@ -199,7 +197,7 @@ def main() -> None:
             ssl_context=(args.tls_cert, args.tls_key),
         )
         Thread(target=tls_server.serve_forever, name="piuda-https", daemon=True).start()
-        print(f"통화용 HTTPS 준비 완료: {args.tls_port}번 포트")
+        print(f"HTTPS 준비 완료: {args.tls_port}번 포트")
     try:
         serve(app, host=args.host, port=args.port, threads=8)
     finally:

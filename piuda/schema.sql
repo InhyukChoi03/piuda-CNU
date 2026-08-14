@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS schema_meta (
     value TEXT NOT NULL
 );
 
-INSERT INTO schema_meta(key, value) VALUES ('schema_version', '4')
+INSERT INTO schema_meta(key, value) VALUES ('schema_version', '5')
 ON CONFLICT(key) DO UPDATE SET value = excluded.value;
 
 CREATE TABLE IF NOT EXISTS profile (
@@ -107,25 +107,6 @@ CREATE TABLE IF NOT EXISTS alerts (
 );
 
 CREATE INDEX IF NOT EXISTS idx_alerts_time ON alerts(created_at DESC);
-
-CREATE TABLE IF NOT EXISTS calls (
-    id TEXT PRIMARY KEY,
-    status TEXT NOT NULL CHECK (status IN ('ringing','active','declined','ended','missed')),
-    created_at TEXT NOT NULL,
-    answered_at TEXT,
-    ended_at TEXT
-);
-
-CREATE TABLE IF NOT EXISTS call_signals (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    call_id TEXT NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
-    sender TEXT NOT NULL CHECK (sender IN ('user','caregiver')),
-    kind TEXT NOT NULL CHECK (kind IN ('offer','answer','ice')),
-    payload_json TEXT NOT NULL,
-    created_at TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_call_signals_call ON call_signals(call_id, id);
 
 CREATE TABLE IF NOT EXISTS feedback_messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

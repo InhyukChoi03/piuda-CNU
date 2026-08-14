@@ -150,7 +150,7 @@ try writePNG(
     opaque: true
 )
 let userURL = "http://CNU.local:8080/"
-let caregiverURL = "https://CNU.local:8443/caregiver"
+let caregiverURL = "http://CNU.local:8080/caregiver"
 let userQR = qrRoot.appendingPathComponent("user.png")
 let caregiverQR = qrRoot.appendingPathComponent("caregiver.png")
 try writePNG(makeQR(userURL), to: userQR, interpolation: .none)

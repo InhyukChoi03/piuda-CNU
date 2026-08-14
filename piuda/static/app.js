@@ -14,32 +14,13 @@ const state = {
   alertAudioContext: null,
   userName: "사용자",
   wellnessActivation: "",
-  wellnessTimer: null,
-  call: {
-    id: "",
-    role: "",
-    peer: null,
-    stream: null,
-    pollTimer: null,
-    lastSignalId: 0,
-    pendingIce: [],
-    phase: "idle",
-    polling: false,
-    cleaning: false,
-    pollFailures: 0,
-    answerTimer: null,
-    ringingTimer: null,
-    disconnectTimer: null
-  }
+  wellnessTimer: null
 };
 let installPromptEvent = null;
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 
 function networkErrorMessage() {
-  if (window.location.protocol === "https:") {
-    return "통화 서버에 연결하지 못했습니다. 인증서 신뢰 설정과 Wi-Fi를 확인한 뒤 Safari에서 새로고침해 주세요.";
-  }
   return "Pi 서버에 연결하지 못했습니다. Raspberry Pi와 Wi-Fi 연결을 확인해 주세요.";
 }
 
@@ -164,10 +145,8 @@ async function initUser() {
   }));
   $("#ttsToggle").addEventListener("click", toggleTts);
   $("#replayButton").addEventListener("click", () => speak(state.lastReply, true));
-  $("#caregiverCallButton").addEventListener("click", callCaregiver);
+  $("#caregiverAlertButton").addEventListener("click", sendCaregiverAlert);
   $$('[data-wellness-response]').forEach(button => button.addEventListener("click", () => respondWellness(button.dataset.wellnessResponse)));
-  $("#userCallEnd").addEventListener("click", () => endCall("ended"));
-  $("#userCallDialog").addEventListener("cancel", event => event.preventDefault());
   updateTtsControls();
   setupVoiceInput();
 }
@@ -270,455 +249,26 @@ async function respondWellness(answer) {
   }
 }
 
-async function microphoneStream(role) {
-  if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-    throw new Error("음성 통화는 보안 통화 화면에서 사용할 수 있어요.");
-  }
+async function sendCaregiverAlert() {
+  const button = $("#caregiverAlertButton");
+  if (!button || button.disabled) return;
+  button.disabled = true;
+  button.textContent = "알림 보내는 중…";
   try {
-    return await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      video: false
-    });
+    const result = await api("/caregiver-alert", { method: "POST" });
+    const message = result.created
+      ? "보호자에게 확인 알림을 보냈어요."
+      : "보호자에게 이미 알림을 보냈어요.";
+    button.textContent = "알림 전송 완료";
+    toast(message);
+    speak(message);
   } catch (error) {
-    const messages = {
-      NotAllowedError: "마이크 권한이 꺼져 있어요. 브라우저 설정에서 피우다의 마이크를 허용해 주세요.",
-      NotFoundError: role === "user"
-        ? "사용자 기기의 마이크를 찾지 못했어요. Raspberry Pi에 USB 마이크나 헤드셋을 연결해 주세요."
-        : "보호자 기기의 마이크를 찾지 못했어요. 기기의 마이크 설정을 확인해 주세요.",
-      NotReadableError: "마이크를 다른 앱이 사용 중이에요. 다른 앱을 닫고 다시 시도해 주세요.",
-      AbortError: "마이크 연결이 중단됐어요. 잠시 후 다시 시도해 주세요."
-    };
-    throw new Error(messages[error?.name] || "마이크를 열지 못했어요. 연결과 권한을 확인해 주세요.");
-  }
-}
-
-function emptyCallState() {
-  return {
-    id: "", role: "", peer: null, stream: null, pollTimer: null,
-    lastSignalId: 0, pendingIce: [], phase: "idle", polling: false,
-    cleaning: false, pollFailures: 0, answerTimer: null, ringingTimer: null,
-    disconnectTimer: null
-  };
-}
-
-function callDialogFor(role) {
-  return role === "user" ? $("#userCallDialog") : $("#caregiverCallDialog");
-}
-
-function callAudioFor(role) {
-  return role === "user" ? $("#userRemoteAudio") : $("#caregiverRemoteAudio");
-}
-
-async function sendCallSignal(kind, signal, callId = state.call.id, role = state.call.role) {
-  if (!callId || !role) return;
-  await api(`/calls/${callId}/signals`, {
-    method: "POST",
-    body: { sender: role, kind, signal }
-  });
-}
-
-function cleanupCallOnPageHide() {
-  const current = state.call;
-  // 수신 벨만 보던 보호자 탭이 닫혀도 사용자의 요청은 유지합니다.
-  // 실제 로컬 peer를 만든 탭만 자신의 통화를 종료합니다.
-  if (!current.id || !current.peer || current.cleaning) return;
-  const callId = current.id;
-  const headers = { Accept: "application/json", "Content-Type": "application/json" };
-  if (state.token) headers.Authorization = `Bearer ${state.token}`;
-  fetch(`/api/v1/calls/${encodeURIComponent(callId)}/status`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ status: "ended" }),
-    cache: "no-store",
-    keepalive: true
-  }).catch(() => {});
-  // pagehide는 BFCache 진입에서도 발생하므로 반드시 표준 초기화를
-  // 거쳐, 뒤로가기로 페이지가 복원되어도 다음 통화를 바로 시작할 수 있게 합니다.
-  finishCallLocally("", callId);
-}
-
-window.addEventListener("pagehide", cleanupCallOnPageHide);
-
-async function sendIceWithRetry(signal, callId, role, peer) {
-  const retryDelays = [0, 250, 750];
-  let lastError = null;
-  for (const delay of retryDelays) {
-    if (!callStillCurrent(callId, role, peer)) return;
-    if (delay) await new Promise(resolve => setTimeout(resolve, delay));
-    if (!callStillCurrent(callId, role, peer)) return;
-    try {
-      await sendCallSignal("ice", signal, callId, role);
-      return;
-    } catch (error) {
-      lastError = error;
-      // 잘못된 페이로드나 이미 종료된 통화는 다시 보내도 회복되지 않습니다.
-      if (error.status >= 400 && error.status < 500) break;
-    }
-  }
-  if (callStillCurrent(callId, role, peer)) throw lastError || new Error("ICE 전송 실패");
-}
-
-function makePeer(role, stream, callId) {
-  const peer = new RTCPeerConnection({ iceServers: [] });
-  stream.getTracks().forEach(track => peer.addTrack(track, stream));
-  peer.onicecandidate = event => {
-    if (event.candidate && state.call.id === callId && state.call.peer === peer) {
-      sendIceWithRetry(event.candidate.toJSON(), callId, role, peer).catch(() => {
-        if (callStillCurrent(callId, role, peer)) {
-          terminateCall("ended", "통화 연결 정보를 보내지 못했어요. 네트워크를 확인하고 다시 시도해 주세요.", callId);
-        }
-      });
-    }
-  };
-  peer.ontrack = event => {
-    const audio = callAudioFor(role);
-    if (!audio) return;
-    audio.srcObject = event.streams[0];
-    audio.play().catch(() => {});
-  };
-  peer.onconnectionstatechange = () => {
-    if (state.call.id !== callId || state.call.peer !== peer || state.call.cleaning) return;
-    if (peer.connectionState === "connected") {
-      clearTimeout(state.call.disconnectTimer);
-      state.call.disconnectTimer = null;
-      setCallConnected(role);
-    }
-    if (peer.connectionState === "failed") {
-      terminateCall("ended", "통화 연결에 실패했어요. 다시 시도해 주세요.");
-    }
-    if (peer.connectionState === "disconnected" && !state.call.disconnectTimer) {
-      state.call.disconnectTimer = setTimeout(() => {
-        if (state.call.id === callId && peer.connectionState === "disconnected") {
-          terminateCall("ended", "통화 연결이 끊어졌어요.");
-        }
-      }, 5000);
-    }
-  };
-  return peer;
-}
-
-function setCallConnected(role) {
-  state.call.phase = "active";
-  clearTimeout(state.call.answerTimer);
-  clearTimeout(state.call.ringingTimer);
-  state.call.answerTimer = null;
-  state.call.ringingTimer = null;
-  if (role === "user") {
-    $("#userCallTitle").textContent = "보호자와 연결됐어요";
-    $("#userCallStatus").textContent = "통화 중입니다.";
-  } else {
-    $("#caregiverCallTitle").textContent = `${state.userName}님과 통화 중`;
-    $("#caregiverCallStatus").textContent = "통화 중입니다.";
-    $("#caregiverCallEnd").classList.remove("hidden");
-  }
-  callDialogFor(role)?.classList.add("connected");
-}
-
-function callStillCurrent(callId, role, peer = null) {
-  return state.call.id === callId
-    && state.call.role === role
-    && (!peer || state.call.peer === peer);
-}
-
-function fatalCallSignal(message, cause = null) {
-  const error = new Error(message);
-  error.callSignalFatal = true;
-  if (cause) error.cause = cause;
-  return error;
-}
-
-function remoteDescriptionFor(item, expectedKind, expectedSender) {
-  if (item.sender !== expectedSender
-      || item.payload?.type !== expectedKind
-      || typeof item.payload?.sdp !== "string"
-      || !item.payload.sdp.trim()) {
-    throw fatalCallSignal("통화 연결 정보가 올바르지 않아 통화를 종료했어요. 다시 시도해 주세요.");
-  }
-  return item.payload;
-}
-
-async function setRemoteCallDescription(peer, description) {
-  try {
-    await peer.setRemoteDescription(description);
-  } catch (error) {
-    throw fatalCallSignal("통화 연결 정보를 적용하지 못해 통화를 종료했어요. 다시 시도해 주세요.", error);
-  }
-}
-
-async function flushPendingIce(peer, callId, role) {
-  if (!peer?.remoteDescription || !callStillCurrent(callId, role, peer)) return;
-  const pending = state.call.pendingIce.splice(0);
-  for (const candidate of pending) {
-    if (!callStillCurrent(callId, role, peer)) return;
-    await state.call.peer.addIceCandidate(candidate).catch(() => {});
-  }
-}
-
-async function handleCallSignal(item, callId, role) {
-  const peer = state.call.peer;
-  if (!peer || !callStillCurrent(callId, role, peer)) return;
-  if (item.kind === "ice") {
-    if (peer.remoteDescription) await peer.addIceCandidate(item.payload).catch(() => {});
-    else if (callStillCurrent(callId, role, peer)) state.call.pendingIce.push(item.payload);
-    return;
-  }
-  if (item.kind === "offer" && role === "caregiver") {
-    const offer = remoteDescriptionFor(item, "offer", "user");
-    if (!peer.remoteDescription) {
-      await setRemoteCallDescription(peer, offer);
-      if (!callStillCurrent(callId, role, peer)) return;
-      await flushPendingIce(peer, callId, role);
-    } else if (peer.remoteDescription.type !== "offer") {
-      throw fatalCallSignal("통화 요청 상태가 올바르지 않아 통화를 종료했어요.");
-    }
-    if (!callStillCurrent(callId, role, peer)) return;
-    if (!peer.localDescription) {
-      try {
-        const answer = await peer.createAnswer();
-        await peer.setLocalDescription(answer);
-      } catch (error) {
-        throw fatalCallSignal("통화 응답 정보를 만들지 못해 통화를 종료했어요.", error);
-      }
-    }
-    if (!callStillCurrent(callId, role, peer)) return;
-    if (peer.localDescription?.type !== "answer") {
-      throw fatalCallSignal("통화 응답 상태가 올바르지 않아 통화를 종료했어요.");
-    }
-    // answer 전송이나 active 전환의 응답을 잃어도 같은 offer를
-    // 다시 처리해 두 요청을 멱등적으로 재시도합니다.
-    const answerPayload = typeof peer.localDescription.toJSON === "function"
-      ? peer.localDescription.toJSON()
-      : { type: peer.localDescription.type, sdp: peer.localDescription.sdp };
-    await sendCallSignal("answer", answerPayload, callId, role);
-    if (!callStillCurrent(callId, role, peer)) return;
-    await api(`/calls/${callId}/status`, { method: "POST", body: { status: "active" } });
-    return;
-  }
-  if (item.kind === "answer" && role === "user") {
-    const answer = remoteDescriptionFor(item, "answer", "caregiver");
-    if (!peer.remoteDescription) {
-      await setRemoteCallDescription(peer, answer);
-      if (!callStillCurrent(callId, role, peer)) return;
-      await flushPendingIce(peer, callId, role);
-    } else if (peer.remoteDescription.type !== "answer") {
-      throw fatalCallSignal("통화 응답 상태가 올바르지 않아 통화를 종료했어요.");
-    }
-  }
-}
-
-async function pollCallSignals() {
-  if (!state.call.id || !state.call.role || state.call.polling || state.call.cleaning) return;
-  const callId = state.call.id;
-  const role = state.call.role;
-  state.call.polling = true;
-  try {
-    const result = await api(`/calls/${callId}/signals?after=${state.call.lastSignalId}&recipient=${role}`);
-    if (state.call.id !== callId || state.call.role !== role) return;
-    if (!result.call || result.call.id !== callId) {
-      await terminateCall("ended", "통화 정보를 확인하지 못했어요. 다시 시도해 주세요.", callId);
-      return;
-    }
-    if (!["ringing", "active"].includes(result.call.status)) {
-      finishCallLocally("통화가 종료되었어요.", callId);
-      return;
-    }
-    for (const item of result.items) {
-      await handleCallSignal(item, callId, role);
-      if (!callStillCurrent(callId, role)) return;
-      state.call.lastSignalId = Math.max(state.call.lastSignalId, Number(item.id) || 0);
-    }
-    state.call.pollFailures = 0;
-  } catch (error) {
-    if (!callStillCurrent(callId, role)) return;
-    state.call.pollFailures += 1;
-    if (error.callSignalFatal) {
-      await terminateCall("ended", error.message, callId);
-    } else if (error.status === 404 || error.status === 409) {
-      finishCallLocally("통화가 종료되었어요.", callId);
-    } else if (state.call.pollFailures === 5) {
-      toast("통화 연결이 불안정해요. 네트워크를 확인하고 있어요.");
-    }
+    toast(error.message);
   } finally {
-    if (callStillCurrent(callId, role)) {
-      state.call.polling = false;
-      if (state.call.phase !== "idle" && state.call.phase !== "ending") {
-        clearTimeout(state.call.pollTimer);
-        state.call.pollTimer = setTimeout(pollCallSignals, 600);
-      }
-    }
-  }
-}
-
-function beginCallPolling() {
-  clearTimeout(state.call.pollTimer);
-  pollCallSignals();
-}
-
-function finishCallLocally(message = "", expectedCallId = "") {
-  if (expectedCallId && state.call.id !== expectedCallId) return;
-  const current = state.call;
-  if (current.cleaning) return;
-  current.cleaning = true;
-  clearTimeout(current.pollTimer);
-  clearTimeout(current.answerTimer);
-  clearTimeout(current.ringingTimer);
-  clearTimeout(current.disconnectTimer);
-  if (current.peer) {
-    current.peer.onicecandidate = null;
-    current.peer.ontrack = null;
-    current.peer.onconnectionstatechange = null;
-    current.peer.close();
-  }
-  current.stream?.getTracks().forEach(track => track.stop());
-  ["#userRemoteAudio", "#caregiverRemoteAudio"].forEach(selector => {
-    const audio = $(selector);
-    if (audio) audio.srcObject = null;
-  });
-  ["#userCallDialog", "#caregiverCallDialog"].forEach(selector => {
-    const dialog = $(selector);
-    if (dialog?.open) dialog.close();
-    dialog?.classList.remove("connected");
-  });
-  $("#incomingCallActions")?.classList.remove("hidden");
-  $("#caregiverCallEnd")?.classList.add("hidden");
-  const answerButton = $("#caregiverCallAnswer");
-  if (answerButton) {
-    answerButton.disabled = false;
-    answerButton.textContent = "통화 받기";
-  }
-  const declineButton = $("#caregiverCallDecline");
-  if (declineButton) declineButton.disabled = false;
-  state.call = emptyCallState();
-  const userButton = $("#caregiverCallButton");
-  if (userButton) {
-    userButton.disabled = false;
-    userButton.textContent = "보호자와 통화";
-  }
-  if (message) toast(message);
-}
-
-async function terminateCall(status = "ended", message = "", expectedCallId = state.call.id) {
-  const callId = expectedCallId;
-  if (callId && state.call.id !== callId) return;
-  if (state.call.phase === "ending") return;
-  state.call.phase = "ending";
-  if (callId) {
-    try { await api(`/calls/${callId}/status`, { method: "POST", body: { status } }); }
-    catch { /* local cleanup still applies */ }
-  }
-  finishCallLocally(
-    message || (status === "declined" ? "통화를 거절했어요." : "통화를 종료했어요."),
-    callId
-  );
-}
-
-async function endCall(status = "ended") {
-  await terminateCall(status);
-}
-
-async function callCaregiver() {
-  const button = $("#caregiverCallButton");
-  if (!button || state.call.phase !== "idle") return;
-  let acquiredStream = null;
-  let createdCallId = "";
-  state.call.phase = "acquiring";
-  button.disabled = true;
-  button.textContent = "마이크 준비 중…";
-  try {
-    acquiredStream = await microphoneStream("user");
-    const result = await api("/caregiver-call", { method: "POST", body: { replace: true } });
-    createdCallId = result.call.id;
-    state.call.id = result.call.id;
-    state.call.role = "user";
-    state.call.stream = acquiredStream;
-    state.call.phase = "connecting";
-    state.call.peer = makePeer("user", acquiredStream, state.call.id);
-    acquiredStream = null;
-    const offer = await state.call.peer.createOffer();
-    await state.call.peer.setLocalDescription(offer);
-    await sendCallSignal("offer", state.call.peer.localDescription.toJSON());
-    $("#userCallTitle").textContent = "보호자를 부르고 있어요";
-    $("#userCallStatus").textContent = "스마트폰에서 통화를 받을 때까지 잠시 기다려 주세요.";
-    $("#userCallDialog").showModal();
-    button.textContent = "통화 요청 중";
-    state.call.phase = "ringing";
-    state.call.ringingTimer = setTimeout(() => {
-      if (callStillCurrent(createdCallId, "user") && state.call.phase === "ringing") {
-        terminateCall("missed", "보호자가 응답하지 않아 통화 요청을 마쳤어요. 잠시 후 다시 시도해 주세요.", createdCallId);
-      }
-    }, 120000);
-    beginCallPolling();
-    speak("보호자에게 통화를 요청했어요.");
-  } catch (error) {
-    acquiredStream?.getTracks().forEach(track => track.stop());
-    const failedCallId = state.call.id || createdCallId;
-    if (failedCallId) {
-      try { await api(`/calls/${failedCallId}/status`, { method: "POST", body: { status: "ended" } }); }
-      catch { /* the local UI must still recover */ }
-    }
-    finishCallLocally();
-    toast(error.message);
-  }
-}
-
-function showIncomingCall(call, userName) {
-  if (!call || state.call.role === "user") return;
-  state.userName = userName || "사용자";
-  if (state.call.id && state.call.id !== call.id) finishCallLocally();
-  if (!state.call.id) {
-    state.call.id = call.id;
-    state.call.role = "caregiver";
-    state.call.phase = "ringing";
-    $("#caregiverCallTitle").textContent = `${state.userName}님이 부르고 있어요`;
-    $("#caregiverCallStatus").textContent = "통화 받기를 눌러 연결하세요.";
-    playAlertTone();
-  }
-  if (state.call.id === call.id
-      && state.call.phase !== "ending"
-      && !$("#caregiverCallDialog").open) {
-    $("#caregiverCallDialog").showModal();
-  }
-}
-
-async function answerCaregiverCall() {
-  if (!state.call.id || state.call.phase !== "ringing") return;
-  const callId = state.call.id;
-  let acquiredStream = null;
-  state.call.phase = "answering";
-  const button = $("#caregiverCallAnswer");
-  button.disabled = true;
-  button.textContent = "마이크 연결 중…";
-  try {
-    acquiredStream = await microphoneStream("caregiver");
-    if (!callStillCurrent(callId, "caregiver")) {
-      acquiredStream.getTracks().forEach(track => track.stop());
-      return;
-    }
-    state.call.stream = acquiredStream;
-    state.call.peer = makePeer("caregiver", acquiredStream, callId);
-    acquiredStream = null;
-    const peer = state.call.peer;
-    state.call.phase = "connecting";
-    $("#incomingCallActions").classList.add("hidden");
-    $("#caregiverCallEnd").classList.remove("hidden");
-    $("#caregiverCallStatus").textContent = "사용자 화면과 연결하고 있어요.";
-    state.call.answerTimer = setTimeout(() => {
-      if (callStillCurrent(callId, "caregiver", peer) && state.call.phase === "connecting") {
-        terminateCall("ended", "통화 연결 정보가 도착하지 않았어요. 사용자 화면에서 다시 통화를 눌러 주세요.", callId);
-      }
-    }, 12000);
-    beginCallPolling();
-  } catch (error) {
-    acquiredStream?.getTracks().forEach(track => track.stop());
-    if (!callStillCurrent(callId, "caregiver")) return;
-    state.call.peer?.close();
-    state.call.stream?.getTracks().forEach(track => track.stop());
-    state.call.peer = null;
-    state.call.stream = null;
-    toast(error.message);
-    state.call.phase = "ringing";
-    button.disabled = false;
-    button.textContent = "통화 받기";
+    window.setTimeout(() => {
+      button.disabled = false;
+      button.textContent = "보호자에게 알림 보내기";
+    }, 2500);
   }
 }
 
@@ -817,20 +367,12 @@ async function initCaregiver() {
   $("#logoutButton").addEventListener("click", logout);
   $("#refreshButton").addEventListener("click", loadDashboard);
   $("#localAlertAcknowledge").addEventListener("click", acknowledgeLocalAlert);
-  $("#caregiverCallAnswer").addEventListener("click", answerCaregiverCall);
-  $("#caregiverCallDecline").addEventListener("click", () => endCall("declined"));
-  $("#caregiverCallEnd").addEventListener("click", () => endCall("ended"));
-  $("#caregiverCallDialog").addEventListener("cancel", event => event.preventDefault());
   $("#routineForm").addEventListener("submit", submitRoutine);
   $("#sensorForm").addEventListener("submit", submitSensor);
   $$('[data-dialog]').forEach(button => button.addEventListener("click", () => $("#" + button.dataset.dialog).showModal()));
   $$('[data-close]').forEach(button => button.addEventListener("click", () => button.closest("dialog").close()));
   $("#alertList").addEventListener("click", acknowledgeAlert);
   document.addEventListener("pointerdown", prepareAlertAudio, { once: true });
-  if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-    $("#callSecurityNotice").classList.remove("hidden");
-    $("#secureCallLink").href = `http://${window.location.hostname}:8080/install#call-setup`;
-  }
   try {
     const onboard = await api("/onboarding");
     state.setupRequired = onboard.setup_required;
@@ -883,7 +425,6 @@ async function submitAuth(event) {
 }
 
 async function logout() {
-  if (state.call.id) await endCall("ended");
   try { await api("/auth/logout", { method: "POST" }); } catch { /* local cleanup still applies */ }
   state.token = "";
   state.lastAlertId = null;
@@ -913,18 +454,6 @@ async function loadDashboard() {
     renderSensors(sensors.items);
     renderEvents(result.sensor_events);
     notifyNewCaregiverAlert(result.alerts);
-    if (result.call?.status === "ringing" && result.call.offer_ready) {
-      showIncomingCall(result.call, result.profile?.user_name);
-    } else if (result.call?.status === "active") {
-      const isThisTabsCall = state.call.role === "caregiver"
-        && state.call.id === result.call.id
-        && Boolean(state.call.peer);
-      if (!isThisTabsCall && state.call.role === "caregiver" && state.call.id) {
-        finishCallLocally("다른 기기에서 통화를 받았어요.", state.call.id);
-      }
-    } else if (state.call.role === "caregiver" && state.call.id) {
-      finishCallLocally("통화 요청이 종료되었어요.", state.call.id);
-    }
   } catch (error) {
     if (error.status === 401) {
       state.token = "";
@@ -972,14 +501,10 @@ function playAlertTone() {
 
 function notifyNewCaregiverAlert(alerts) {
   const newestId = alerts.reduce((maximum, item) => Math.max(maximum, Number(item.id) || 0), 0);
-  if (state.lastAlertId === null) {
-    state.lastAlertId = newestId;
-    return;
-  }
   const fresh = alerts
-    .filter(item => !item.acknowledged_at && item.title !== "보호자 통화 요청" && Number(item.id) > state.lastAlertId)
+    .filter(item => !item.acknowledged_at && (state.lastAlertId === null || Number(item.id) > state.lastAlertId))
     .sort((left, right) => Number(right.id) - Number(left.id))[0];
-  state.lastAlertId = Math.max(state.lastAlertId, newestId);
+  state.lastAlertId = Math.max(state.lastAlertId ?? 0, newestId);
   if (!fresh) return;
   const dialog = $("#localAlertDialog");
   dialog.dataset.alertId = fresh.id;
@@ -1162,10 +687,9 @@ async function copyOrShare(url, title) {
 function initInstall() {
   const origin = window.location.origin;
   const userUrl = `${origin}/`;
-  const caregiverUrl = `https://${window.location.hostname}:8443/caregiver`;
+  const caregiverUrl = `${origin}/caregiver`;
   $("#userInstallUrl").textContent = userUrl;
   $("#caregiverInstallUrl").textContent = caregiverUrl;
-  $("#secureCallLink").href = caregiverUrl;
 
   $$('[data-share]').forEach(button => button.addEventListener("click", () => {
     const caregiver = button.dataset.share === "caregiver";
