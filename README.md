@@ -20,7 +20,7 @@
 - `/demo` 발표 제어실의 3단계 생활 스토리 12개 장면
 - 사용자 버튼·위험 감지로 생성되는 보호자 확인 알림과 30초 중복 방지
 - Raspberry Pi에서 실측해 선택한 한국어 특화 HyperCLOVA X SEED 1.5B Q4, 최근 대화 기억과 즉시 안전 폴백
-- Raspberry Pi USB 마이크와 `whisper.cpp` tiny·Silero VAD 기반 오프라인 한국어 STT, Supertonic 3 기반 오프라인 한국어 신경망 TTS
+- Raspberry Pi USB 마이크와 `whisper.cpp` base·Silero VAD 기반 오프라인 한국어 STT, Supertonic 3 기반 오프라인 한국어 신경망 TTS
 - SwiftUI iOS 앱, Keychain 토큰 저장, `192.168.4.1` 고정 로컬 연결
 - Arduino-ESP32 3.3.11 통합 센서 펌웨어와 room_1/room_2 빌드 프로필
 - 키오스크 창과 서버·AI가 함께 켜지고 닫히는 실행 구조와 SQLite WAL 저장
@@ -78,7 +78,7 @@ tail -f /home/cnu/.local/state/piuda/launcher.log
 
 환경값은 `/home/cnu/piuda/.env`에 설정할 수 있습니다. 비밀키와 카카오 토큰은 Git에 넣지 마세요. 발표용 핫스팟·센서 키는 장비의 무설정 연결을 위한 공개 시연 값이므로 실제 운영 전에 반드시 바꾸세요.
 
-음성 질문을 사용하려면 Raspberry Pi에 USB 마이크 또는 마이크가 있는 USB 헤드셋이 필요합니다. Raspberry Pi 5 본체에는 내장 마이크가 없습니다. `install.sh`가 ARM64용 `whisper.cpp` tiny·Silero VAD 모델과 sherpa-onnx·Supertonic 3 INT8 모델을 검증된 체크섬으로 설치합니다. 키오스크의 **말하기** 버튼을 누르면 USB 마이크를 5초간 녹음해 Pi 안에서 한국어로 변환하고, AI 답변도 Pi 안에서 차분한 여성 음성으로 합성합니다. 두 기능 모두 `PIUDA-CNU` 핫스팟에 인터넷이 없어도 동작합니다. 이전 Google TTS 캐시가 있는 문장은 기존 음성을 그대로 재사용합니다.
+음성 질문을 사용하려면 Raspberry Pi에 USB 마이크 또는 마이크가 있는 USB 헤드셋이 필요합니다. Raspberry Pi 5 본체에는 내장 마이크가 없습니다. `install.sh`가 ARM64용 `whisper.cpp` base·Silero VAD 모델과 sherpa-onnx·Supertonic 3 INT8 모델을 검증된 체크섬으로 설치합니다. 키오스크의 **말하기** 버튼을 누르면 USB 마이크를 5초간 녹음해 Pi 안에서 한국어로 변환하고, AI 답변도 Pi 안에서 차분한 여성 음성으로 합성합니다. 두 기능 모두 `PIUDA-CNU` 핫스팟에 인터넷이 없어도 동작합니다.
 
 마이크 점검과 음성인식 재설치는 다음 명령으로 할 수 있습니다.
 
@@ -89,7 +89,7 @@ amixer -c Microphone contents
 ./deploy/install-local-tts.sh
 ```
 
-기본 TTS는 Supertonic 3의 차분한 여성 `F1`(`PIUDA_TTS_SPEAKER_ID=0`)입니다. `.env`에서 0~4 여성, 5~9 남성 음성을 선택할 수 있으며 `PIUDA_TTS_SPEED` 기본값은 `1.03`입니다. 핫스팟 전환 후 Pi에 인터넷이 없다면, 다른 컴퓨터에서 런타임·모델 아카이브를 옮긴 뒤 `PIUDA_TTS_RUNTIME_ARCHIVE`와 `PIUDA_TTS_MODEL_ARCHIVE`를 지정해 오프라인 설치할 수 있습니다.
+기본 TTS는 Supertonic 3의 차분한 여성 `F1`(`PIUDA_TTS_SPEAKER_ID=0`)입니다. `.env`에서 0~4 여성, 5~9 남성 음성을 선택할 수 있으며, 실측해 선택한 기본값은 `PIUDA_TTS_NUM_STEPS=4`, `PIUDA_TTS_SPEED=1.10`입니다. 핫스팟 전환 후 Pi에 인터넷이 없다면, 다른 컴퓨터에서 런타임·모델 아카이브를 옮긴 뒤 `PIUDA_TTS_RUNTIME_ARCHIVE`와 `PIUDA_TTS_MODEL_ARCHIVE`를 지정해 오프라인 설치할 수 있습니다.
 
 피우다는 시연 전용으로 동작합니다. 바탕화면의 **피우다 실행** 아이콘을 누를 때마다 기존 DB의 일정 완료·센서·AI 대화·보호자 PIN·로그인 토큰을 지우고 같은 시연 장면에서 시작합니다. 이어서 HyperCLOVA X SEED 모델을 적재하고 Chromium 도구 모음과 작업표시줄을 가린 전체 화면으로 실행합니다. 직전 시연 기록은 보존되지 않습니다. `Alt+F4`로 Chromium 창을 닫으면 웹 서버와 AI 모델도 함께 종료되어 같은 네트워크의 `/demo`·보호자 화면도 더 이상 접속되지 않습니다. 보호자 PIN은 항상 `3017`입니다. 키오스크에서는 AI 답변과 일정 완료 메시지를 음성으로 읽어 줍니다.
 

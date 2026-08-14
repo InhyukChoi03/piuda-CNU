@@ -98,13 +98,14 @@ if [[ "$server_ready" != "1" ]]; then
 fi
 
 if /usr/bin/arecord -l >>"$log_file" 2>&1; then
-  # 시연용 USB 마이크의 자동 게인을 켭니다. 해당 컨트롤이 없는 기기는 건너뜁니다.
-  /usr/bin/amixer -c Microphone cset numid=4 1 >>"$log_file" 2>&1 || true
+  # Keep the demo microphone below clipping; unsupported controls are skipped.
+  /usr/bin/amixer -c Microphone cset name='Auto Gain Control' 0 >>"$log_file" 2>&1 || true
+  /usr/bin/amixer -c Microphone cset name='Mic Capture Volume' 18 >>"$log_file" 2>&1 || true
 else
   echo "안내: 음성 질문을 사용하려면 USB 마이크 또는 헤드셋을 연결하세요." >>"$log_file"
 fi
 if [[ ! -x /home/cnu/.local/lib/piuda-whisper/whisper-cli ]] \
-  || [[ ! -f /home/cnu/.local/share/piuda/models/ggml-tiny.bin ]] \
+  || [[ ! -f /home/cnu/.local/share/piuda/models/ggml-base.bin ]] \
   || [[ ! -f /home/cnu/.local/share/piuda/models/ggml-silero-v6.2.0.bin ]]; then
   echo "안내: deploy/install-local-stt.sh를 실행해 로컬 음성인식을 설치하세요." >>"$log_file"
 fi

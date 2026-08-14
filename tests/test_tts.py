@@ -29,16 +29,14 @@ def test_local_neural_tts_requires_runtime_model_and_player(tmp_path, monkeypatc
     assert tts.local_neural_tts_available() is False
 
 
-def test_existing_google_cache_is_used_before_offline_generation(tmp_path, monkeypatch):
+def test_speak_uses_only_offline_neural_voice(tmp_path, monkeypatch):
     monkeypatch.setenv("PIUDA_DATA_DIR", str(tmp_path))
     calls = []
-    monkeypatch.setattr(tts, "_play_cached_cloud_voice", lambda clean: calls.append("cache") or True)
     monkeypatch.setattr(tts, "_offline_neural_tts", lambda clean: calls.append("offline") or True)
-    monkeypatch.setattr(tts, "_cloud_tts", lambda clean: calls.append("cloud") or True)
 
     tts._speak("안녕하세요.")
 
-    assert calls == ["cache"]
+    assert calls == ["offline"]
 
 
 def test_offline_neural_tts_generates_atomic_cache_with_korean_voice(tmp_path, monkeypatch):
@@ -61,14 +59,8 @@ def test_offline_neural_tts_generates_atomic_cache_with_korean_voice(tmp_path, m
     assert synthesis[0] == str(root / "runtime/bin/sherpa-onnx-offline-tts")
     assert "--lang=ko" in synthesis
     assert "--sid=0" in synthesis
-    assert "--num-steps=8" in synthesis
-    assert "--speed=1.03" in synthesis
+    assert "--num-steps=4" in synthesis
+    assert "--speed=1.10" in synthesis
     assert synthesis[-1] == "오늘 기분은 어떠세요?"
     assert len(list((tmp_path / "data/tts-cache").glob("*.wav"))) == 1
     assert not list((tmp_path / "data/tts-cache").glob("*.part"))
-
-
-def test_cloud_cache_key_stays_compatible_with_previous_versions(tmp_path, monkeypatch):
-    monkeypatch.setenv("PIUDA_DATA_DIR", str(tmp_path))
-
-    assert tts._cloud_cache_path("안녕하세요.").name == "e941957a8cd8c1409c8e1ce1.mp3"

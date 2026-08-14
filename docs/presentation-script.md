@@ -165,7 +165,7 @@
 | 발표 제어실 | 로컬·데모 모드에서만 12개 장면 허용, 로그인은 보존하면서 데이터 상태를 재현 | `piuda/api.py`의 `_demo_access_error()`; `piuda/demo.py`의 `trigger_demo_scenario()` |
 | 보호자 동기화 | 사용자·보호자·제어실을 2초 주기로 `no-store` API 조회, 포커스 복귀 시 즉시 새로고침 | `piuda/static/app.js`의 `refreshUserSnapshot()`, `loadDashboard()`, `loadDemoStatus()` |
 | 로컬 AI | 긴급·일정 질문 우선 규칙, 최근 대화와 현재 맥락을 Ollama chat에 전달, 출력 정제, 실패 시 안전 폴백 | `piuda/integrations.py`의 `_fast_feedback()`, `_recall_recent_user_message()`, `ollama_feedback()` |
-| 음성 입출력 | Pi 키오스크가 USB 마이크를 5초간 직접 녹음하고 whisper.cpp tiny·Silero VAD로 오프라인 한국어 STT 처리, 답변은 `/tts`의 gTTS 캐시·espeak fallback으로 출력 | `piuda/stt.py`; `piuda/static/app.js`의 `recordLocalVoice()`, `speak()`; `piuda/tts.py`; `piuda/api.py`의 `local_voice_listen()`, `local_tts()` |
+| 음성 입출력 | Pi 키오스크가 USB 마이크를 5초간 직접 녹음하고 whisper.cpp base·Silero VAD로 오프라인 한국어 STT 처리, 답변은 `/tts`의 Supertonic 3 음성만 사용 | `piuda/stt.py`; `piuda/static/app.js`의 `recordLocalVoice()`, `speak()`; `piuda/tts.py`; `piuda/api.py`의 `local_voice_listen()`, `local_tts()` |
 | 보호자 인증 | PIN 해시, 세션 인증 버전, 해시된 bearer token, 로그아웃 시 토큰 폐기 | `piuda/auth.py`; `piuda/schema.sql`의 `caregivers`, `api_tokens` |
 | 로컬 저장 | SQLite 외래 키, WAL, 5초 busy timeout; 일정·센서·점수·알림·대화 분리 저장 | `piuda/db.py`; `piuda/schema.sql` |
 | PWA 배포 | 사용자·보호자 manifest, v23 shell 캐시, 고정 핫스팟 QR, 자산별 독립 설치 캐시, `event.waitUntil` 기반 백그라운드 갱신 | `piuda/static/service-worker.js`; `scripts/generate_pwa_assets.swift`; `pyproject.toml` |
@@ -177,7 +177,7 @@
 - `센서 연결 끊김`은 일반 `RISK_RULES`의 25점 감점 항목이다. 마지막 신호가 없는 새 센서는 등록 시각부터, 신호를 받은 센서는 `last_seen_at`부터 30분 이상 지나면 적용된다.
 - CSI는 임계값 기반의 **넘어짐 의심 보조 신호**다. 의료기기 판정이나 검증되지 않은 정확도 수치를 말하지 않는다.
 - 카메라는 사용하지 않지만 일정·센서·대화 기록은 Pi의 SQLite에 저장된다. “아무 데이터도 저장하지 않는다”라고 말하지 않는다.
-- Pi 키오스크의 음성 입력과 Ollama 모델 추론은 Pi에서 처리한다. 음성 출력은 기존 gTTS 캐시가 없고 인터넷도 없으면 espeak 로컬 음성으로 대체된다. iPhone 앱의 음성인식 경로까지 Pi 오프라인 STT라고 표현하지 않는다.
+- Pi 키오스크의 음성 입력과 Ollama 모델 추론, Supertonic 3 음성 합성은 Pi에서 처리한다. 음성 합성이 실패해도 다른 목소리로 대체하지 않는다. iPhone 앱의 음성인식 경로까지 Pi 오프라인 STT라고 표현하지 않는다.
 - PWA의 화면 셸은 캐시되지만 일정·센서 API 데이터에는 Pi 연결이 필요하다.
 - SwiftUI 앱은 일정·대시보드·STT/TTS를 구현한다. 발표의 사용자 직접 보호자 알림은 웹/PWA 화면에서 시연한다.
 
@@ -189,7 +189,7 @@
 | 30초 뒤 보호자 알림이 안 뜸 | 사용자 팝업의 카운트다운과 보호자 화면 포커스 확인 | A가 `확인에 응답 없음` 장면을 직접 실행 | “시간상 미응답 이후 상태를 제어실에서 재현했습니다.”라고 밝히고 30점·알림을 설명 |
 | 알림음이 나지 않음 | C가 발표 전에 화면을 터치해 AudioContext를 활성화했는지 확인 | 화면을 한 번 터치하고 시각적 팝업을 계속 시연 | 소리는 생략하고 큰 팝업·진동·미확인 알림 수치로 설명 |
 | AI 응답이 늦음 | 서버 연결과 모델 예열 확인 | 요청을 중복 전송하지 않고 발표 설명을 계속한다. 20초 뒤에도 결과가 없으면 두 번째 기억 질문 생략 | “일정·긴급 질문은 모델을 거치지 않고 즉시 답하며, 모델 실패 시 안전 폴백을 반환합니다.”라고 설명 |
-| AI 음성이 안 나옴 | `소리 켜짐`, Pi 볼륨, 네트워크 확인 | `다시 듣기`를 한 번만 누름 | 화면의 텍스트 응답으로 진행하고 gTTS·espeak fallback 구조만 설명 |
+| AI 음성이 안 나옴 | `소리 켜짐`, Pi 볼륨, Supertonic 설치 확인 | `다시 듣기`를 한 번만 누름 | 화면의 텍스트 응답으로 진행 |
 | 사용자 직접 알림이 안 뜸 | B·C의 연결 표시와 C의 로그인·화면 포커스 확인 | 2초 기다린 뒤 C를 새로고침하고 알림 목록 확인 | 제어실의 `보호자 알림 요청` 장면으로 같은 DB 알림 흐름을 재현하고 설명 |
 | ESP32 실기 신호가 불안정 | heartbeat와 센서 키 확인 | 제어실의 `넘어짐 의심` 장면 사용 | “물리적 넘어짐 대신 동일 이벤트 데이터를 재현합니다.”라고 명시 |
 | 서버 자체가 응답하지 않음 | `http://127.0.0.1:8080/api/v1/health` 확인 | 키오스크를 종료하고 `피우다 실행`으로 한 번만 재시작 | 재시작 시간을 넘기면 백업 영상과 구조 설명으로 발표 계속 |
@@ -208,7 +208,7 @@
 - [ ] 음성 질문을 시연한다면 Pi에 USB 마이크를 연결하고 입력 장치로 인식되는지 확인했다.
 - [ ] `.venv/bin/pytest -q`가 모두 통과하는지 확인했다.
 - [ ] Pi의 AI 모델이 예열되어 일반 질문에 응답하는지 확인했다.
-- [ ] gTTS 재생 또는 espeak fallback과 Pi 스피커 볼륨을 확인했다.
+- [ ] Supertonic 3 재생과 Pi 스피커 볼륨을 확인했다.
 - [ ] 두 AI 질문을 클립보드나 메모에 준비했다: `오늘 보리차를 마셨어요. 잘했죠?`, `제가 아까 무엇을 마셨죠?`.
 
 ### T-5분

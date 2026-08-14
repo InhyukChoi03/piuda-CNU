@@ -13,7 +13,7 @@ if [[ "$(pwd)" != "$project_dir" ]]; then
 fi
 
 sudo apt-get update
-sudo apt-get install -y python3-flask python3-waitress python3-gtts mpg123 espeak-ng alsa-utils chromium curl avahi-daemon fcitx5 fcitx5-hangul fcitx5-frontend-gtk3
+sudo apt-get install -y python3-flask python3-waitress alsa-utils chromium curl avahi-daemon fcitx5 fcitx5-hangul fcitx5-frontend-gtk3
 if ! command -v ollama >/dev/null 2>&1; then
   echo "Ollama가 설치되어 있지 않습니다. https://ollama.com/download/linux 에서 설치한 뒤 다시 실행하세요." >&2
   exit 1

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import importlib.util
 import logging
 import os
 from pathlib import Path
@@ -43,10 +42,6 @@ def _wave_player() -> str | None:
     return shutil.which("pw-play") or shutil.which("aplay")
 
 
-def _mp3_player() -> str | None:
-    return shutil.which("ffplay") or shutil.which("mpg123")
-
-
 def local_neural_tts_available() -> bool:
     engine, _, model_dir = _supertonic_paths()
     return bool(
@@ -60,10 +55,6 @@ def local_neural_tts_available() -> bool:
 def local_tts_engine() -> str:
     if local_neural_tts_available():
         return "supertonic3"
-    if importlib.util.find_spec("gtts") and _mp3_player():
-        return "google"
-    if shutil.which("espeak-ng") and _wave_player():
-        return "espeak"
     return "unavailable"
 
 
@@ -90,31 +81,15 @@ def _cache_root() -> Path:
     return root
 
 
-def _cloud_cache_path(clean: str) -> Path:
-    # Keep the original key so natural gTTS audio cached by earlier versions is reused.
-    digest = hashlib.sha256(f"ko:{clean}".encode("utf-8")).hexdigest()[:24]
-    return _cache_root() / f"{digest}.mp3"
-
-
 def _play_audio(audio_path: Path) -> bool:
-    if audio_path.suffix == ".mp3":
-        player = _mp3_player()
-        if not player:
-            return False
-        command = (
-            [player, "-nodisp", "-autoexit", "-hide_banner", "-loglevel", "quiet", str(audio_path)]
-            if Path(player).name == "ffplay"
-            else [player, "-q", str(audio_path)]
-        )
-    else:
-        player = _wave_player()
-        if not player:
-            return False
-        command = (
-            [player, str(audio_path)]
-            if Path(player).name == "pw-play"
-            else [player, "-q", str(audio_path)]
-        )
+    player = _wave_player()
+    if not player:
+        return False
+    command = (
+        [player, str(audio_path)]
+        if Path(player).name == "pw-play"
+        else [player, "-q", str(audio_path)]
+    )
 
     result = subprocess.run(
         command,
@@ -127,19 +102,14 @@ def _play_audio(audio_path: Path) -> bool:
     return result.returncode == 0
 
 
-def _play_cached_cloud_voice(clean: str) -> bool:
-    audio_path = _cloud_cache_path(clean)
-    return audio_path.is_file() and audio_path.stat().st_size > 0 and _play_audio(audio_path)
-
-
 def _offline_neural_tts(clean: str) -> bool:
     if not local_neural_tts_available():
         return False
 
     engine, library_dir, model_dir = _supertonic_paths()
     speaker_id = max(0, min(int(os.getenv("PIUDA_TTS_SPEAKER_ID", "0")), 9))
-    num_steps = max(2, min(int(os.getenv("PIUDA_TTS_NUM_STEPS", "8")), 12))
-    speed = max(0.75, min(float(os.getenv("PIUDA_TTS_SPEED", "1.03")), 1.4))
+    num_steps = max(2, min(int(os.getenv("PIUDA_TTS_NUM_STEPS", "4")), 12))
+    speed = max(0.75, min(float(os.getenv("PIUDA_TTS_SPEED", "1.10")), 1.4))
     cache_key = f"supertonic3-ko:{speaker_id}:{num_steps}:{speed:.2f}:{clean}"
     digest = hashlib.sha256(cache_key.encode("utf-8")).hexdigest()[:24]
     audio_path = _cache_root() / f"{digest}.wav"
@@ -188,54 +158,16 @@ def _offline_neural_tts(clean: str) -> bool:
     return _play_audio(audio_path)
 
 
-def _cloud_tts(clean: str) -> bool:
-    if not importlib.util.find_spec("gtts") or not _mp3_player():
-        return False
-
-    from gtts import gTTS
-
-    audio_path = _cloud_cache_path(clean)
-    if not audio_path.exists():
-        temporary = audio_path.with_suffix(".mp3.part")
-        try:
-            gTTS(text=clean, lang="ko", slow=False, timeout=8).save(str(temporary))
-            if temporary.stat().st_size <= 0:
-                return False
-            temporary.replace(audio_path)
-        finally:
-            temporary.unlink(missing_ok=True)
-    return _play_audio(audio_path)
-
-
-def _robotic_fallback(clean: str) -> None:
-    engine = shutil.which("espeak-ng")
-    if not engine:
-        return
-    subprocess.run(
-        [engine, "-v", "ko", "-s", "145", "-a", "170", clean],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        env=_audio_environment(),
-        timeout=30,
-        check=False,
-    )
-
-
 def _speak(text: str) -> None:
     clean = _clean_text(text)
     if not clean:
         return
     with _SPEAK_LOCK:
         try:
-            if _play_cached_cloud_voice(clean):
-                return
-            if _offline_neural_tts(clean):
-                return
-            if _cloud_tts(clean):
-                return
+            if not _offline_neural_tts(clean):
+                LOGGER.warning("Supertonic Korean TTS did not produce audio")
         except Exception:
-            LOGGER.exception("Natural Korean TTS failed; using last-resort local fallback")
-        _robotic_fallback(clean)
+            LOGGER.exception("Supertonic Korean TTS failed")
 
 
 def speak_local_async(text: str) -> bool:

@@ -129,7 +129,7 @@ def load_settings(overrides: dict | None = None) -> Settings:
             overrides.get("STT_MODEL")
             or os.getenv(
                 "PIUDA_STT_MODEL",
-                Path.home() / ".local/share/piuda/models/ggml-tiny.bin",
+                Path.home() / ".local/share/piuda/models/ggml-base.bin",
             )
         ).expanduser(),
         stt_vad_model=Path(
