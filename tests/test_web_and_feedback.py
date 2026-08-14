@@ -36,7 +36,7 @@ def test_pwa_assets_have_install_metadata(client):
     assert service_worker.headers["Cache-Control"] == "no-cache"
     assert "api/" in service_worker.get_data(as_text=True)
     worker_script = service_worker.get_data(as_text=True)
-    assert 'const CACHE = "piuda-v22"' in worker_script
+    assert 'const CACHE = "piuda-v23"' in worker_script
     assert 'url.pathname === "/caregiver"' in worker_script
     assert 'fetch(event.request, { cache: "no-store" })' in worker_script
     assert '"/caregiver",' not in worker_script
@@ -99,6 +99,16 @@ def test_user_script_periodically_refreshes_without_http_cache(client):
     assert 'cache: "no-store"' in script
     assert "refreshUserSnapshot" in script
     assert "}, 2000);" in script
+
+
+def test_pi_kiosk_uses_local_usb_microphone_endpoint(client):
+    user_page = client.get("/").get_data(as_text=True)
+    script = client.get("/static/app.js").get_data(as_text=True)
+
+    assert "마이크 가까이에서 5초 안에 질문" in user_page
+    assert "recordLocalVoice" in script
+    assert 'api("/voice/listen", { method: "POST"' in script
+    assert '$("#assistantForm").requestSubmit()' in script
 
 
 def test_same_wifi_demo_console_and_caregiver_alert_ui(app, client):

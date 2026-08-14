@@ -26,6 +26,11 @@ class Settings:
     demo_sensor_key: str
     csi_motion_threshold: float
     csi_strong_threshold: float
+    stt_binary: Path
+    stt_model: Path
+    stt_vad_model: Path
+    stt_mic_device: str
+    stt_duration_seconds: int
 
 
 def _load_dotenv(path: Path) -> None:
@@ -112,5 +117,34 @@ def load_settings(overrides: dict | None = None) -> Settings:
         ),
         csi_strong_threshold=float(
             overrides.get("CSI_STRONG_THRESHOLD") or os.getenv("PIUDA_CSI_STRONG_THRESHOLD", "45")
+        ),
+        stt_binary=Path(
+            overrides.get("STT_BINARY")
+            or os.getenv(
+                "PIUDA_STT_BINARY",
+                Path.home() / ".local/lib/piuda-whisper/whisper-cli",
+            )
+        ).expanduser(),
+        stt_model=Path(
+            overrides.get("STT_MODEL")
+            or os.getenv(
+                "PIUDA_STT_MODEL",
+                Path.home() / ".local/share/piuda/models/ggml-tiny.bin",
+            )
+        ).expanduser(),
+        stt_vad_model=Path(
+            overrides.get("STT_VAD_MODEL")
+            or os.getenv(
+                "PIUDA_STT_VAD_MODEL",
+                Path.home() / ".local/share/piuda/models/ggml-silero-v6.2.0.bin",
+            )
+        ).expanduser(),
+        stt_mic_device=str(
+            overrides.get("STT_MIC_DEVICE")
+            or os.getenv("PIUDA_STT_MIC_DEVICE", "plughw:CARD=Microphone,DEV=0")
+        ),
+        stt_duration_seconds=int(
+            overrides.get("STT_DURATION_SECONDS")
+            or os.getenv("PIUDA_STT_DURATION_SECONDS", "5")
         ),
     )

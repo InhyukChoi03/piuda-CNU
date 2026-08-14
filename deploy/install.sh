@@ -38,6 +38,8 @@ fi
 
 chmod 0755 deploy/piuda-kiosk.sh
 chmod 0755 deploy/setup-hotspot.sh
+chmod 0755 deploy/install-local-stt.sh
+deploy/install-local-stt.sh
 deploy/setup-hotspot.sh
 if ! arecord -l >/dev/null 2>&1; then
   echo "안내: 음성 질문을 사용하려면 USB 마이크를 연결하세요." >&2

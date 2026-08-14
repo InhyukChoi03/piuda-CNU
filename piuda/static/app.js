@@ -343,14 +343,19 @@ async function speak(text, force = false) {
 }
 
 function setupVoiceInput() {
-  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const button = $("#voiceButton");
+  if (!button) return;
+  if (state.kiosk) {
+    button.addEventListener("click", () => recordLocalVoice(button));
+    button.title = "USB 마이크로 5초 동안 듣고 Pi에서 음성을 글로 바꿉니다.";
+    return;
+  }
+
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!Recognition || !button) {
-    if (button) {
-      button.disabled = true;
-      button.textContent = "마이크 없음";
-      button.title = "이 브라우저에서 음성 인식을 사용할 수 없습니다.";
-    }
+    button.disabled = true;
+    button.textContent = "음성 입력 미지원";
+    button.title = "이 브라우저에서는 음성 인식을 사용할 수 없습니다.";
     return;
   }
   const recognition = new Recognition();
@@ -361,6 +366,31 @@ function setupVoiceInput() {
   recognition.onerror = () => toast("음성을 듣지 못했어요. 다시 시도해 주세요.");
   recognition.onresult = event => { $("#assistantInput").value = event.results[0][0].transcript; };
   button.addEventListener("click", () => recognition.start());
+}
+
+async function recordLocalVoice(button) {
+  if (button.disabled) return;
+  const input = $("#assistantInput");
+  const duration = 5;
+  let remaining = duration;
+  button.disabled = true;
+  button.textContent = `말씀하세요 · ${remaining}초`;
+  const countdown = window.setInterval(() => {
+    remaining -= 1;
+    button.textContent = remaining > 0 ? `말씀하세요 · ${remaining}초` : "음성을 글로 바꾸는 중…";
+  }, 1000);
+  try {
+    const result = await api("/voice/listen", { method: "POST", body: { duration_seconds: duration } });
+    input.value = result.transcript;
+    toast(`“${result.transcript}”로 들었어요.`);
+    $("#assistantForm").requestSubmit();
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    window.clearInterval(countdown);
+    button.disabled = false;
+    button.textContent = "● 말하기";
+  }
 }
 
 async function initCaregiver() {

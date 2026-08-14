@@ -1,11 +1,11 @@
-const CACHE = "piuda-v22";
+const CACHE = "piuda-v23";
 const SHELL = [
   "/",
   "/caregiver-manifest.webmanifest",
   "/install",
   "/static/offline.html",
-  "/static/app.css?v=22",
-  "/static/app.js?v=22",
+  "/static/app.css?v=23",
+  "/static/app.js?v=23",
   "/static/icons/icon-180.png",
   "/static/icons/icon-192.png",
   "/static/icons/icon-512.png",

@@ -11,7 +11,7 @@
   <title>피우다 · 오늘의 생활</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/icon-180.png">
-  <link rel="stylesheet" href="/static/app.css?v=22">
+  <link rel="stylesheet" href="/static/app.css?v=23">
 </head>
 <body data-page="user">
   <header class="topbar shell">
@@ -56,7 +56,7 @@
         <form id="assistantForm" class="assistant-form">
           <label class="sr-only" for="assistantInput">도우미에게 할 말</label>
           <input id="assistantInput" autocomplete="off" placeholder="피우다에게 말해 보세요" maxlength="500" autofocus>
-          <p class="input-hint">한/영 전환: Ctrl + Space</p>
+          <p class="input-hint">말하기를 누른 뒤 마이크 가까이에서 5초 안에 질문해 주세요.</p>
           <button class="button secondary voice-button" id="voiceButton" type="button" aria-label="음성으로 말하기">● 말하기</button>
           <button class="button primary" type="submit">보내기</button>
         </form>
@@ -80,6 +80,6 @@
 
   <footer class="shell footer"><div class="footer-links"><a href="/caregiver">보호자 화면</a><a href="/install">아이폰 설치</a></div></footer>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="/static/app.js?v=22" defer></script>
+  <script src="/static/app.js?v=23" defer></script>
 </body>
 </html>

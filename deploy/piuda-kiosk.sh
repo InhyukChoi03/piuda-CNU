@@ -97,8 +97,16 @@ if [[ "$server_ready" != "1" ]]; then
   exit 1
 fi
 
-if ! /usr/bin/arecord -l >>"$log_file" 2>&1; then
+if /usr/bin/arecord -l >>"$log_file" 2>&1; then
+  # 시연용 USB 마이크의 자동 게인을 켭니다. 해당 컨트롤이 없는 기기는 건너뜁니다.
+  /usr/bin/amixer -c Microphone cset numid=4 1 >>"$log_file" 2>&1 || true
+else
   echo "안내: 음성 질문을 사용하려면 USB 마이크 또는 헤드셋을 연결하세요." >>"$log_file"
+fi
+if [[ ! -x /home/cnu/.local/lib/piuda-whisper/whisper-cli ]] \
+  || [[ ! -f /home/cnu/.local/share/piuda/models/ggml-tiny.bin ]] \
+  || [[ ! -f /home/cnu/.local/share/piuda/models/ggml-silero-v6.2.0.bin ]]; then
+  echo "안내: deploy/install-local-stt.sh를 실행해 로컬 음성인식을 설치하세요." >>"$log_file"
 fi
 
 # 데모 DB는 서버 시작 시 초기화되며, AI는 이전 캐시를 비우고 다시 적재합니다.

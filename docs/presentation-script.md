@@ -165,10 +165,10 @@
 | 발표 제어실 | 로컬·데모 모드에서만 12개 장면 허용, 로그인은 보존하면서 데이터 상태를 재현 | `piuda/api.py`의 `_demo_access_error()`; `piuda/demo.py`의 `trigger_demo_scenario()` |
 | 보호자 동기화 | 사용자·보호자·제어실을 2초 주기로 `no-store` API 조회, 포커스 복귀 시 즉시 새로고침 | `piuda/static/app.js`의 `refreshUserSnapshot()`, `loadDashboard()`, `loadDemoStatus()` |
 | 로컬 AI | 긴급·일정 질문 우선 규칙, 최근 대화와 현재 맥락을 Ollama chat에 전달, 출력 정제, 실패 시 안전 폴백 | `piuda/integrations.py`의 `_fast_feedback()`, `_recall_recent_user_message()`, `ollama_feedback()` |
-| 음성 입출력 | 웹 SpeechRecognition, 브라우저 SpeechSynthesis, Pi 키오스크의 `/tts`와 gTTS 캐시·espeak fallback | `piuda/static/app.js`의 `setupVoiceInput()`, `speak()`; `piuda/tts.py`; `piuda/api.py`의 `local_tts()` |
+| 음성 입출력 | Pi 키오스크가 USB 마이크를 5초간 직접 녹음하고 whisper.cpp tiny·Silero VAD로 오프라인 한국어 STT 처리, 답변은 `/tts`의 gTTS 캐시·espeak fallback으로 출력 | `piuda/stt.py`; `piuda/static/app.js`의 `recordLocalVoice()`, `speak()`; `piuda/tts.py`; `piuda/api.py`의 `local_voice_listen()`, `local_tts()` |
 | 보호자 인증 | PIN 해시, 세션 인증 버전, 해시된 bearer token, 로그아웃 시 토큰 폐기 | `piuda/auth.py`; `piuda/schema.sql`의 `caregivers`, `api_tokens` |
 | 로컬 저장 | SQLite 외래 키, WAL, 5초 busy timeout; 일정·센서·점수·알림·대화 분리 저장 | `piuda/db.py`; `piuda/schema.sql` |
-| PWA 배포 | 사용자·보호자 manifest, v21 shell 캐시, 고정 핫스팟 QR, 자산별 독립 설치 캐시, `event.waitUntil` 기반 백그라운드 갱신 | `piuda/static/service-worker.js`; `scripts/generate_pwa_assets.swift`; `pyproject.toml` |
+| PWA 배포 | 사용자·보호자 manifest, v23 shell 캐시, 고정 핫스팟 QR, 자산별 독립 설치 캐시, `event.waitUntil` 기반 백그라운드 갱신 | `piuda/static/service-worker.js`; `scripts/generate_pwa_assets.swift`; `pyproject.toml` |
 
 ## 구현 범위를 정확히 말하기
 
@@ -177,7 +177,7 @@
 - `센서 연결 끊김`은 일반 `RISK_RULES`의 25점 감점 항목이다. 마지막 신호가 없는 새 센서는 등록 시각부터, 신호를 받은 센서는 `last_seen_at`부터 30분 이상 지나면 적용된다.
 - CSI는 임계값 기반의 **넘어짐 의심 보조 신호**다. 의료기기 판정이나 검증되지 않은 정확도 수치를 말하지 않는다.
 - 카메라는 사용하지 않지만 일정·센서·대화 기록은 Pi의 SQLite에 저장된다. “아무 데이터도 저장하지 않는다”라고 말하지 않는다.
-- Ollama 모델 추론은 Pi에서 처리하지만 gTTS는 네트워크가 필요할 수 있고, 웹 SpeechRecognition도 브라우저 구현에 따라 외부 처리가 가능하다. “음성까지 완전 오프라인”이라고 말하지 않는다.
+- Pi 키오스크의 음성 입력과 Ollama 모델 추론은 Pi에서 처리한다. 음성 출력은 기존 gTTS 캐시가 없고 인터넷도 없으면 espeak 로컬 음성으로 대체된다. iPhone 앱의 음성인식 경로까지 Pi 오프라인 STT라고 표현하지 않는다.
 - PWA의 화면 셸은 캐시되지만 일정·센서 API 데이터에는 Pi 연결이 필요하다.
 - SwiftUI 앱은 일정·대시보드·STT/TTS를 구현한다. 발표의 사용자 직접 보호자 알림은 웹/PWA 화면에서 시연한다.
 

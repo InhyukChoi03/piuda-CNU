@@ -30,6 +30,13 @@ from .integrations import ollama_feedback, send_kakao_alert
 from .risk import LEVELS, RISK_RULES, evaluate_risk
 from .scheduler import CATEGORIES, create_routine, materialize_day, today_tasks, validate_time
 from .sensors import ingest_module_reading
+from .stt import (
+    LocalSttBusy,
+    LocalSttNoSpeech,
+    LocalSttUnavailable,
+    local_stt_available,
+    transcribe_local,
+)
 from .tts import speak_local_async
 from .validation import boolean_value, integer_value, number_value, object_value, text_value
 
@@ -99,6 +106,7 @@ def health():
             "time": iso(),
             "ollama_model": current_app.config["OLLAMA_MODEL"],
             "demo_mode": bool(current_app.config.get("DEMO_MODE")),
+            "local_stt": local_stt_available(),
             "hotspot": {
                 "ssid": current_app.config["HOTSPOT_SSID"],
                 "gateway": current_app.config["HOTSPOT_GATEWAY"],
@@ -704,3 +712,30 @@ def local_tts():
     if not speak_local_async(text):
         return jsonify({"error": "local_tts_unavailable"}), 503
     return jsonify({"accepted": True}), 202
+
+
+@api.post("/voice/listen")
+def local_voice_listen():
+    try:
+        loopback = ip_address(request.remote_addr or "").is_loopback
+    except ValueError:
+        loopback = False
+    if not loopback:
+        return jsonify({"error": "local_kiosk_only"}), 403
+
+    data = optional_payload()
+    duration = integer_value(
+        data.get("duration_seconds", current_app.config["STT_DURATION_SECONDS"]),
+        "duration_seconds",
+        minimum=2,
+        maximum=8,
+    )
+    try:
+        transcript = transcribe_local(duration)
+    except LocalSttBusy as error:
+        return jsonify({"error": "voice_busy", "message": str(error)}), 409
+    except LocalSttNoSpeech as error:
+        return jsonify({"error": "no_speech", "message": str(error)}), 422
+    except LocalSttUnavailable as error:
+        return jsonify({"error": "local_stt_unavailable", "message": str(error)}), 503
+    return jsonify({"transcript": transcript})
