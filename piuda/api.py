@@ -37,7 +37,7 @@ from .stt import (
     local_stt_available,
     transcribe_local,
 )
-from .tts import speak_local_async
+from .tts import local_tts_engine, speak_local_async
 from .validation import boolean_value, integer_value, number_value, object_value, text_value
 
 
@@ -107,6 +107,7 @@ def health():
             "ollama_model": current_app.config["OLLAMA_MODEL"],
             "demo_mode": bool(current_app.config.get("DEMO_MODE")),
             "local_stt": local_stt_available(),
+            "local_tts": local_tts_engine(),
             "hotspot": {
                 "ssid": current_app.config["HOTSPOT_SSID"],
                 "gateway": current_app.config["HOTSPOT_GATEWAY"],

@@ -108,6 +108,10 @@ if [[ ! -x /home/cnu/.local/lib/piuda-whisper/whisper-cli ]] \
   || [[ ! -f /home/cnu/.local/share/piuda/models/ggml-silero-v6.2.0.bin ]]; then
   echo "안내: deploy/install-local-stt.sh를 실행해 로컬 음성인식을 설치하세요." >>"$log_file"
 fi
+if [[ ! -x /home/cnu/.local/lib/piuda-supertonic/runtime/bin/sherpa-onnx-offline-tts ]] \
+  || [[ ! -f /home/cnu/.local/lib/piuda-supertonic/model/voice.bin ]]; then
+  echo "안내: deploy/install-local-tts.sh를 실행해 로컬 신경망 음성을 설치하세요." >>"$log_file"
+fi
 
 # 데모 DB는 서버 시작 시 초기화되며, AI는 이전 캐시를 비우고 다시 적재합니다.
 /usr/bin/env "${piuda_env[@]}" \
